@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import {
     View,
     Image,
@@ -19,7 +19,7 @@ import Animated, {
     useAnimatedProps,
 } from 'react-native-reanimated';
 
-import Svg, { Line, Polyline } from 'react-native-svg';
+import Svg, { Line, Path } from 'react-native-svg';
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 
@@ -31,10 +31,11 @@ import {
 import AppIcon from './AppIcon'
 
 const AnimatedLine = Animated.createAnimatedComponent(Line);
-const AnimatedPolyline = Animated.createAnimatedComponent(Polyline);
+const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 function generateSpline(points, segments = 20) {
-    if (points.length < 2) {
+    'worklet';
+    if ((points?.length ?? 0) < 2) {
         return points;
     }
 
@@ -157,6 +158,8 @@ function CalibrationDot({
 
 function DraggablePoint({
     item,
+    pointIndex,
+    datasetIndex,
     colour,
     isSelected,
     datasetId,
@@ -165,6 +168,7 @@ function DraggablePoint({
     scale,
     imageWidth,
     imageHeight,
+    sharedDatasetPoints,
     onDragComplete,
     setSelectedPointRef,
 }) {
@@ -199,6 +203,15 @@ function DraggablePoint({
             }
             translateX.value = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
             translateY.value = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
+
+            sharedDatasetPoints.modify(value => {
+                value[datasetIndex][pointIndex] = {
+                    x: translateX.value,
+                    y: translateY.value,
+                };
+                return value;
+            });
+
         })
         .onEnd(() => {
             if (datasetIsLocked || !datasetIsActive) {
@@ -210,7 +223,7 @@ function DraggablePoint({
 
 
     const RADIUS = 30;
-    const RING_THICK = 10;
+    const RING_THICK = 5;
 
     const containerStyle = {
         position: "absolute",
@@ -316,14 +329,10 @@ function DraggablePoint({
                 ]}>
 
                     {datasetIsActive && (
-                        <>
-
-                            <View style={[
-                                ring,
-                                outerRing
-                            ]} />
-
-                        </>
+                        <View style={[
+                            ring,
+                            outerRing
+                        ]} />
                     )}
                     <View style={[
                         coreDot,
@@ -335,6 +344,73 @@ function DraggablePoint({
                 </Animated.View>
             </GestureDetector>
         </>
+    );
+}
+
+function pointsToPath(points, imageWidth, imageHeight, curveMode) {
+    'worklet';
+
+    if ((points?.length ?? 0) < 2) {
+        return '';
+    }
+
+    let curvePoints;
+
+    switch (curveMode) {
+
+        case 'none':
+            return null;
+
+        case 'linear':
+            curvePoints = points;
+            break;
+
+        case 'spline':
+            curvePoints = generateSpline(points, 10);
+            break;
+        default:
+            curvePoints = points;
+    }
+
+    return curvePoints.reduce((path, p, i) => {
+        if (i === 0) {
+            return `M${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
+        }
+        return `${path} L${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
+    }, '');
+}
+
+function AnimatedDatasetPath({
+    datasetIndex,
+    sharedDatasetPoints,
+    imageWidth,
+    imageHeight,
+    curveMode,
+    colour,
+    scale
+}) {
+
+    const animatedProps = useAnimatedProps(() => {
+        const points =
+            sharedDatasetPoints.value[datasetIndex];
+        if (!points || points.length < 2) {
+            return { d: '' };
+        }
+
+        const d = pointsToPath(points, imageWidth, imageHeight, curveMode);
+
+        return {
+            strokeWidth: 3 / scale.value,
+            d: d
+        };
+    });
+
+    return (
+        <AnimatedPath
+            animatedProps={animatedProps}
+            stroke={colour}
+            fill="none"
+        />
     );
 }
 
@@ -469,11 +545,17 @@ export default function GraphCanvas(props) {
         ],
     }));
 
-    const animatedSplineProps =
-        useAnimatedProps(() => ({
-            strokeWidth: 3 / scale.value,
-        }));
+    const sharedDatasets = useSharedValue([]);
 
+    useEffect(() => {
+        sharedDatasets.value =
+            datasets.map(dataset =>
+                dataset.points.map(point => ({
+                    x: point.x,
+                    y: point.y,
+                }))
+            );
+    }, [datasets]);
 
     return (
         <View
@@ -513,7 +595,6 @@ export default function GraphCanvas(props) {
                         color={COLOURS.buttonIcon}
                     />
 
-
                     <Text
                         numberOfLines={1}
                         ellipsizeMode="middle"
@@ -550,7 +631,6 @@ export default function GraphCanvas(props) {
                                         }
                                     ]
                                 } />
-
 
                                 <CalibrationLine
                                     p1={calibration.origin}
@@ -594,46 +674,12 @@ export default function GraphCanvas(props) {
                                     imageHeight={imageHeight}
                                 />
 
-
                                 {datasets
-                                    .filter(d => d.visible && d.curveMode !== 'none')
-                                    .map(d => {
+                                    .map((d, datasetIndex) => {
 
-                                        if (d.points.length < 2) {
+                                        if (!d.visible || d.curveMode == 'none' || (d?.points?.length ?? 0) < 2) {
                                             return null;
                                         }
-
-                                        let curvePoints;
-
-                                        switch (d.curveMode) {
-
-                                            case 'none':
-                                                return null;
-
-                                            case 'linear':
-                                                curvePoints = d.points;
-                                                break;
-
-                                            case 'spline':
-                                                curvePoints = generateSpline(d.points, 10);
-                                                break;
-                                            default:
-                                                curvePoints = d.points;
-                                        }
-
-                                        const polylinePoints = (curvePoints || [])
-                                            .map(
-                                                p =>
-                                                    `${p.x * imageWidth / LOGICAL_WIDTH},${p.y * imageHeight / LOGICAL_HEIGHT}`
-                                            )
-                                            .join(' ');
-
-                                        const polylinePoints2 = curvePoints
-                                            .map(
-                                                p =>
-                                                    `${p.x * imageWidth / LOGICAL_WIDTH},${p.y * imageHeight / LOGICAL_HEIGHT}`
-                                            )
-                                            .join(' ');
 
                                         return (
                                             <Svg
@@ -642,34 +688,39 @@ export default function GraphCanvas(props) {
                                                     StyleSheet.absoluteFill
                                                 ]}
                                             >
-                                                <AnimatedPolyline
-                                                    points={polylinePoints}
-                                                    fill="none"
-                                                    stroke={d.color}
-                                                    //strokeWidth={5 / scale.value}
-                                                    animatedProps={animatedSplineProps}
+                                                <AnimatedDatasetPath
+                                                    key={d.id}
+                                                    datasetIndex={datasetIndex}
+                                                    sharedDatasetPoints={sharedDatasets}
+                                                    imageWidth={imageWidth}
+                                                    imageHeight={imageHeight}
+                                                    curveMode={d.curveMode}
+                                                    colour={d.color}
+                                                    scale={scale}
                                                 />
-                                            </Svg>
-                                        )
 
+                                            </Svg>
+
+                                        )
                                     }
 
                                     )
                                 }
-
                                 {datasets
-                                    .filter(d => d.visible)
-                                    .map(d => (d.points || [])
-                                        .map(p => {
+                                    .map((d, datasetIndex) => (d.points || [])
+                                        .map((p, pointIndex) => {
+                                            if (!d.visible) {
+                                                return null;
+                                            }
                                             const datasetIsActive = activeDatasetId === d.id;
                                             const isSelected =
                                                 selectedPointRef?.datasetId === d.id &&
                                                 selectedPointRef?.pointId === p.id;
                                             return (
-
-
                                                 <DraggablePoint
                                                     key={p.id}
+                                                    pointIndex={pointIndex}
+                                                    datasetIndex={datasetIndex}
                                                     item={p}
                                                     colour={d.color}
                                                     isSelected={isSelected}
@@ -679,22 +730,16 @@ export default function GraphCanvas(props) {
                                                     scale={scale}
                                                     imageWidth={imageWidth}
                                                     imageHeight={imageHeight}
+                                                    sharedDatasetPoints={sharedDatasets}
                                                     onDragComplete={finishDragTransaction}
                                                     setSelectedPointRef={setSelectedPointRef}
                                                 />
                                             )
                                         })
                                     )}
-
-
-
                             </Animated.View>
-
                         </View>
-
-
                     </GestureDetector>
-
                 </>
             )}
         </View>

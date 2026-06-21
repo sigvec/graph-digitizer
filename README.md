@@ -28,17 +28,33 @@ The application is designed for extracting numerical data from graphs when the o
 * React Native Reanimated
 * AsyncStorage
 
-## Calibration
 
-![Calibration](screenshots/calibration.png)
+## Screenshots
 
-## Data fit
+### Calibration
 
-![Data fit](screenshots/data-fit.png)
+Define graph axes and reference points for coordinate conversion.
 
-## Spline interpolation
+<p align="center">
+  <img src="screenshots/calibration.png" width="350">
+</p>
 
-![Spline Interpolation](screenshots/interpolation.png)
+### Data Fitting
+
+Digitize points and perform curve fitting.
+
+<p align="center">
+  <img src="screenshots/data-fit.png" width="350">
+</p>
+
+### Spline Interpolation
+
+Visualize interpolated curves and manage multiple datasets.
+
+<p align="center">
+  <img src="screenshots/interpolation.png" width="350">
+</p>
+
 
 ## Status
 
