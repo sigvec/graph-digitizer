@@ -47,7 +47,7 @@ export default function IconButton({
                 }>
                     <AppIcon
                         name={icon}
-                        color={iconColour}
+                        colour={iconColour}
                     />
                 </View>
             )}

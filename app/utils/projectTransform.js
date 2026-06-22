@@ -1,24 +1,3 @@
-export function toExportFormat(datasets) {
-    return datasets.map(d => ({
-        id: d.id,
-        name: d.name,
-        color: d.color,
-        rawPoints: d.points || [],
-    }));
-}
-
-export function fromExportFormat(project) {
-    return {
-        ...project,
-        datasets: (project.datasets || []).map(d => ({
-            id: d.id,
-            name: d.name,
-            color: d.color,
-            points: d.rawPoints || [],
-        })),
-    };
-}
-
 export function hydrateProject(project) {
     return {
         ...project,
@@ -26,7 +5,7 @@ export function hydrateProject(project) {
         datasets: (project.datasets || []).map(d => ({
             id: d.id,
             name: d.name,
-            color: d.color,
+            colour: d.colour ?? d.color,
             visible: d.visible ?? true,
             locked: d.locked ?? false,
             curveMode: d.curveMode ?? 'none',

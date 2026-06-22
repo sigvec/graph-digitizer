@@ -469,7 +469,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         return {
           id: d.id,
           name: d.name,
-          color: d.color,
+          colour: d.colour,
           visible: d.visible,
           locked: d.locked,
           curveMode: d.curveMode,
@@ -664,7 +664,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setDirty(true);
   }
 
-  function setDatasetColor(color) {
+  function setDatasetColour(colour) {
 
     setDatasets(prev =>
       prev.map(d => {
@@ -675,11 +675,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
         return {
           ...d,
-          color,
+          colour,
         };
       })
     );
 
+    setDirty(true)
     setColourPickerVisible(false);
   }
 
@@ -692,7 +693,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
       name: `Curve ${index + 1}`,
 
-      color:
+      colour:
         DATASET_COLOURS[
         index %
         DATASET_COLOURS.length
@@ -828,19 +829,36 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     id, x, y
   ) {
 
-    requestAnimationFrame(() => {
+    setPointPosition(id, x, y);
 
-      requestAnimationFrame(() => {
+    setDirty(true)
+    commitHistorySnapshot(snapshotString);
+  }
 
-        setPointPosition(id, x, y);
+  function finishCalibrationDragTransaction(
+    calibrationMode, x, y
+  ) {
+
+    const calibrationPoint =
+      calibrationMode === 'origin'
+        ? { x, y }
+        : calibrationMode === 'xRef'
+          ? { x, y: null }
+          : { x: null, y };
+
+    setCalibration(prev => ({
+      ...prev,
+      [calibrationMode]: calibrationPoint,
+    }));
+
+    setCalibrationState(prev => ({
+      ...prev,
+      [calibrationMode]: true,
+    }));
 
 
-        commitHistorySnapshot(snapshotString);
-
-
-      });
-
-    });
+    setDirty(true)
+    commitHistorySnapshot(snapshotString);
   }
 
 
@@ -892,30 +910,24 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setDirty(true);
     setSelectedPointRef(null);
 
-    if (mode !== "points") {
+    if (mode !== 'points') {
 
-      if (mode !== 'points') {
+      const calibrationPoint =
+        mode === 'origin'
+          ? { x, y }
+          : mode === 'xRef'
+            ? { x, y: null }
+            : { x: null, y };
 
-        const calibrationPoint =
-          mode === 'origin'
-            ? { x, y }
-            : mode === 'xRef'
-              ? { x, y: null }
-              : { x: null, y };
+      setCalibration(prev => ({
+        ...prev,
+        [mode]: calibrationPoint,
+      }));
 
-        setCalibration(prev => ({
-          ...prev,
-          [mode]: calibrationPoint,
-        }));
-
-        setCalibrationState(prev => ({
-          ...prev,
-          [mode]: true,
-        }));
-
-        return;
-      }
-
+      setCalibrationState(prev => ({
+        ...prev,
+        [mode]: true,
+      }));
 
       return;
     }
@@ -996,7 +1008,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   }
 
 
-
   function nudgePoint(dx, dy) {
 
     if (activeDataset.locked) {
@@ -1034,6 +1045,33 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         };
       })
     );
+  }
+
+  function nudgeCalibrationPoint(dx, dy) {
+
+    if (mode === 'points') {
+      return;
+    }
+
+    const calibrationPoint =
+      mode === 'origin'
+        ? { x: calibration.origin.x + dx, y: calibration.origin.y + dy }
+        : mode === 'xRef'
+          ? { x: calibration.xRef.x + dx, y: null }
+          : { x: null, y: calibration.yRef.y + dy };
+
+    setCalibration(prev => ({
+      ...prev,
+      [mode]: calibrationPoint,
+    }));
+
+    setCalibrationState(prev => ({
+      ...prev,
+      [mode]: true,
+    }));
+
+    setDirty(true)
+
   }
 
   //
@@ -1078,6 +1116,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     return rows.join("\n");
   }
 
+
+  //
+  // Regression
+  // --------------------------------------------------
 
   function linearRegression(points) {
     if (points.length < 2) return null;
@@ -1312,12 +1354,14 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   pickImage={pickImage}
                   datasets={datasets}
                   calibration={calibration}
+                  currentMode={mode}
 
                   activeDataset={activeDataset}
                   activeDatasetId={activeDatasetId}
                   selectedPointRef={selectedPointRef}
                   setSelectedPointRef={setSelectedPointRef}
                   finishDragTransaction={finishDragTransaction}
+                  finishCalibrationDragTransaction={finishCalibrationDragTransaction}
                   addPoint={addPoint}
                   setPointPosition={setPointPosition}
 
@@ -1359,7 +1403,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               marginRight: 6,
                             },
                             {
-                              backgroundColor: activeDataset.color,
+                              backgroundColor: activeDataset.colour,
                             },
                           ]}
                         />
@@ -1424,7 +1468,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   <View style={styles.statusBarSection} >
                     {calibration.origin ? (
                       <Text style={styles.statusTextCoords}>X: {calibration.origin.x
-                        ? (calibration.origin.x / 3).toFixed(1)
+                        ? (calibration.origin.x).toFixed(1)
                         : 'None'}%
                       </Text>
                     ) : (
@@ -1433,7 +1477,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                     {calibration.origin ? (
                       <Text style={styles.statusTextCoords}>Y: {calibration.origin.y
-                        ? (100 - calibration.origin.y / 3).toFixed(1)
+                        ? (100 - calibration.origin.y).toFixed(1)
                         : 'None'}%
                       </Text>
                     ) : (
@@ -1446,7 +1490,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   <View style={styles.statusBarSection} >
                     {calibration.xRef ? (
                       <Text style={styles.statusTextCoords}>X: {calibration.xRef.x
-                        ? (calibration.xRef.x / 3).toFixed(1)
+                        ? (calibration.xRef.x).toFixed(1)
                         : 'None'}%
                       </Text>
                     ) : (
@@ -1455,7 +1499,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                     {calibration.origin ? (
                       <Text style={styles.statusTextCoords}>Y: ({calibration.origin.y
-                        ? (100 - calibration.origin.y / 3).toFixed(1)
+                        ? (100 - calibration.origin.y).toFixed(1)
                         : 'None'}%)
                       </Text>
                     ) : (
@@ -1468,7 +1512,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   <View style={styles.statusBarSection} >
                     {calibration.origin ? (
                       <Text style={styles.statusTextCoords}>X: ({calibration.origin.x
-                        ? (calibration.origin.x / 3).toFixed(1)
+                        ? (calibration.origin.x).toFixed(1)
                         : 'None'}%)
                       </Text>
                     ) : (
@@ -1477,7 +1521,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                     {calibration.yRef ? (
                       <Text style={styles.statusTextCoords}>Y: {calibration.yRef.y
-                        ? (100 - calibration.yRef.y / 3).toFixed(1)
+                        ? (100 - calibration.yRef.y).toFixed(1)
                         : 'None'}%
                       </Text>
                     ) : (
@@ -1485,8 +1529,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     )}
                   </View>
                 }
-
-
 
                 <View style={[
                   styles.statusBarSection,
@@ -1498,12 +1540,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     <AppIcon
                       name={"notVisible"}
                       size={14}
-                      color={mode === 'points' && !activeDataset.visible ? COLOURS.alert : COLOURS.invisible}
+                      colour={mode === 'points' && !activeDataset.visible ? COLOURS.alert : COLOURS.invisible}
                     />
                     <AppIcon
                       name={"locked"}
                       size={14}
-                      color={mode === 'points' && activeDataset.locked ? COLOURS.alert : COLOURS.invisible}
+                      colour={mode === 'points' && activeDataset.locked ? COLOURS.alert : COLOURS.invisible}
                     />
 
                   </View>
@@ -1708,9 +1750,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                           <View style={styles.datasetInfo}>
                             <View
                               style={[
-                                styles.datasetColorDot,
+                                styles.datasetColourDot,
                                 {
-                                  backgroundColor: d.color,
+                                  backgroundColor: d.colour,
                                 },
                               ]}
                             />
@@ -1823,7 +1865,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                             marginRight: 8,
                           },
                           {
-                            backgroundColor: activeDataset.color,
+                            backgroundColor: activeDataset.colour,
                           },
                         ]}
                       />
@@ -1909,16 +1951,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     </View>
 
                     <View style={styles.pointControls}>
-
-
-
                       <IconButton
                         icon="delete"
                         label="Delete Point"
                         onPress={selectedPointRef && handleDeletePoint}
                         disabled={!selectedPointRef || activeDataset.locked}
                       />
-
 
                       <IconButton
                         icon="clearAll"
@@ -1967,7 +2005,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                                 marginRight: 8,
                               },
                               {
-                                backgroundColor: activeDataset.color,
+                                backgroundColor: activeDataset.colour,
                               },
                             ]}
                           />
@@ -2009,7 +2047,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                             <AppIcon
                               name={"alert"}
                               size={14}
-                              color={'#d65910'}
+                              colour={'#d65910'}
                             />
                             <Text style={{ color: '#d65910' }}>
                               (Calibration not set)
@@ -2083,7 +2121,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               <AppIcon
                                 name={"alert"}
                                 size={14}
-                                color={'#d65910'}
+                                colour={'#d65910'}
                               />
                               <Text style={{ color: '#d65910' }}>
                                 (Default)
@@ -2107,7 +2145,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               <AppIcon
                                 name={"alert"}
                                 size={14}
-                                color={'#d65910'}
+                                colour={'#d65910'}
                               />
                               <Text style={{ color: '#d65910' }}>
                                 (Default)
@@ -2131,7 +2169,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               <AppIcon
                                 name={"alert"}
                                 size={14}
-                                color={'#d65910'}
+                                colour={'#d65910'}
                               />
                               <Text style={{ color: '#d65910' }}>
                                 (Default)
@@ -2147,6 +2185,29 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         <TextInput style={styles.input} value={yMax} onChangeText={setYMax} />
                       </View>
 
+                      <View style={styles.pointControls}>
+                        <IconButton
+                          icon="nudgeLeft"
+                          onPress={() => nudgeCalibrationPoint(-1, 0)}
+                          disabled={mode === 'yRef'}
+                        />
+                        <IconButton
+                          icon="nudgeRight"
+                          onPress={() => nudgeCalibrationPoint(1, 0)}
+                          disabled={mode === 'yRef'}
+                        />
+                        <IconButton
+                          icon="nudgeUp"
+                          onPress={() => nudgeCalibrationPoint(0, -1)}
+                          disabled={mode === 'xRef'}
+                        />
+                        <IconButton
+                          icon="nudgeDown"
+                          onPress={() => nudgeCalibrationPoint(0, 1)}
+                          disabled={mode === 'xRef'}
+                        />
+                      </View>
+
                     </View>
                   </ScrollView>
                 )}
@@ -2160,9 +2221,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         <ColourPickerModal
           visible={colourPickerVisible}
           title="Dataset Colour"
-          currentColour={activeDataset?.color}
+          currentColour={activeDataset?.colour}
           setDatasetColour={newColour => {
-            setDatasetColor(newColour)
+            setDatasetColour(newColour)
             setColourPickerVisible(false);
           }}
           onCancel={() =>
@@ -2352,7 +2413,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
 
-  datasetColorDot: {
+  datasetColourDot: {
     width: 12,
     height: 12,
     borderRadius: 6,
