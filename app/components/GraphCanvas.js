@@ -79,80 +79,232 @@ function generateSpline(points, segments = 20) {
     return result;
 }
 
-function CalibrationLine({
-    p1,
-    p2,
+function pointsToPath(points, imageWidth, imageHeight, curveMode) {
+    'worklet';
+
+    if ((points?.length ?? 0) < 2) {
+        return '';
+    }
+
+    let curvePoints;
+
+    switch (curveMode) {
+
+        case 'none':
+            return null;
+
+        case 'linear':
+            curvePoints = points;
+            break;
+
+        case 'spline':
+            curvePoints = generateSpline(points, 10);
+            break;
+        default:
+            curvePoints = points;
+    }
+
+    return curvePoints.reduce((path, p, i) => {
+        if (i === 0) {
+            return `M${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
+        }
+        return `${path} L${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
+    }, '');
+}
+
+function DraggableCalibrationPoint({
+    calibrationType,
+    mode,
     colour,
     scale,
     imageWidth,
     imageHeight,
+    sharedCalibrationPoints,
+    onDragComplete,
 }) {
 
-    if (!p1 || !p2) {
-        return null;
+    const calibrationEnabled = mode !== 'points';
+
+    const contextX = useSharedValue(0);
+    const contextY = useSharedValue(0);
+
+    const SLOP = 50;
+
+    const panGesture = Gesture.Pan()
+        .enabled(calibrationEnabled)
+        .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
+        .onStart(() => {
+            contextX.value = sharedCalibrationPoints.value[calibrationType].x;
+            contextY.value = sharedCalibrationPoints.value[calibrationType].y;
+        })
+        .onUpdate((event) => {
+            let translateX;
+            let translateY;
+
+            if (calibrationType === 'origin' || calibrationType == 'xRef') {
+                translateX = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
+            } else {
+                translateX = sharedCalibrationPoints.value.origin.x;
+            }
+            if (calibrationType === 'origin' || calibrationType == 'yRef') {
+                translateY = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
+            } else {
+                translateY = contextY.value;
+            }
+
+            const c = {
+                ...sharedCalibrationPoints.value,
+            };
+
+            c[calibrationType] = {
+                ...c[calibrationType],
+                x: translateX,
+                y: translateY,
+            };
+
+            sharedCalibrationPoints.value = c;
+
+        })
+        .onEnd(() => {
+            runOnJS(onDragComplete)(calibrationType, sharedCalibrationPoints.value[calibrationType].x, sharedCalibrationPoints.value[calibrationType].y);
+        });
+
+
+    const RADIUS = 60;
+
+    const containerStyle = {
+        position: "absolute",
+        width: 2 * (RADIUS),
+        height: 2 * (RADIUS),
+        borderRadius: RADIUS,
+        justifyContent: 'center',
+        alignItems: 'center',
+        marginLeft: -RADIUS,
+        marginTop: -RADIUS,
     }
 
-    const p1x = (p1.x) * imageWidth / LOGICAL_WIDTH
-    const p1y = (p1.y) * imageHeight / LOGICAL_HEIGHT
-    const p2x = (p2.x) * imageWidth / LOGICAL_WIDTH
-    const p2y = (p2.y) * imageHeight / LOGICAL_HEIGHT
+    const coreDot = {
+        position: "absolute",
+        width: 2 * (RADIUS),
+        height: 2 * (RADIUS),
+        borderRadius: (RADIUS),
+        backgroundColor: colour,
+        zIndex: 1,
+    }
 
-    const animatedProps =
-        useAnimatedProps(() => ({
-            strokeWidth: 5 / scale.value,
-        }));
+    const outerRing = {
+        position: "absolute",
+        width: 2 * (RADIUS),
+        height: 2 * (RADIUS),
+        borderRadius: 1.5 * (RADIUS),
+        borderWidth: 15,
+        backgroundColor: "#00000000",
+        borderColor: 'white',
+        zIndex: 2,
+    }
+
+    const animatedProps = useAnimatedStyle(() => {
+
+        let translateX;
+        let translateY;
+
+        if (calibrationType === 'origin' || calibrationType == 'xRef') {
+            translateX = sharedCalibrationPoints.value[calibrationType].x;
+        } else {
+            translateX = sharedCalibrationPoints.value.origin.x;
+        }
+        if (calibrationType === 'origin' || calibrationType == 'yRef') {
+            translateY = sharedCalibrationPoints.value[calibrationType].y;
+        } else {
+            translateY = sharedCalibrationPoints.value.origin.y;
+        }
+
+        return (
+            {
+                transform: [
+                    { translateX: translateX * imageWidth / LOGICAL_WIDTH },
+                    { translateY: translateY * imageHeight / LOGICAL_HEIGHT },
+                    { scale: 0.1 / scale.value }
+                ],
+            }
+        )
+    });
 
     return (
-        <Svg
-            style={StyleSheet.absoluteFill}
-            pointerEvents="none"
-        >
-            <AnimatedLine
-                x1={p1x}
-                y1={p1y}
-                x2={p2x}
-                y2={p2y}
-                stroke={colour}
-                animatedProps={animatedProps}
-            />
-        </Svg>
+        <GestureDetector gesture={panGesture}>
+            <Animated.View style={[
+                containerStyle,
+                animatedProps,
+            ]}>
+                <View style={[
+                    coreDot,
+                ]} />
+                {mode !== 'points' && <View style={[
+                    outerRing,
+                ]} />}
+            </Animated.View>
+        </GestureDetector>
     );
 }
 
-function CalibrationDot({
-    key,
-    p1,
-    color,
-    scale,
+function AnimatedCalibrationPath({
+    calibrationPoints,
     imageWidth,
     imageHeight,
+    scale
 }) {
 
-    if (!p1) {
-        return null;
+    if (!calibrationPoints) {
+        return { d: '' };
     }
 
-    const DOT_RADIUS = 5;
+    const animatedProps1 = useAnimatedProps(() => {
+        const c = calibrationPoints.value;
+        const points = (
+            [
+                { x: c.origin.x, y: c.origin.y },
+                { x: c.origin.x, y: c.yRef.y }
+            ]
+        );
 
-    const dotStyle = useAnimatedStyle(() => ({
-        position: "absolute",
-        left: -DOT_RADIUS,
-        top: -DOT_RADIUS,
-        width: 2 * DOT_RADIUS,
-        height: 2 * DOT_RADIUS,
-        borderRadius: DOT_RADIUS,
-        backgroundColor: color,
-        transform: [
-            { translateX: (p1.x) * imageWidth / LOGICAL_WIDTH },
-            { translateY: (p1.y) * imageHeight / LOGICAL_HEIGHT },
-            { scale: 1 / scale.value }
-        ],
-    }));
+        const d = pointsToPath(points, imageWidth, imageHeight, 'linear');
+
+        return {
+            strokeWidth: 5 / scale.value,
+            d: d
+        };
+    });
+
+    const animatedProps2 = useAnimatedProps(() => {
+        const c = calibrationPoints.value;
+        const points = (
+            [
+                { x: c.origin.x, y: c.origin.y },
+                { x: c.xRef.x, y: c.origin.y }
+            ]
+        );
+
+        const d = pointsToPath(points, imageWidth, imageHeight, 'linear');
+
+        return {
+            strokeWidth: 5 / scale.value,
+            d: d
+        };
+    });
 
     return (
-        <Animated.View
-            style={dotStyle}
-        />
+        <>
+            <AnimatedPath
+                animatedProps={animatedProps1}
+                stroke={"orange"}
+                fill="none"
+            />
+            <AnimatedPath
+                animatedProps={animatedProps2}
+                stroke={"green"}
+                fill="none"
+            />
+        </>
     );
 }
 
@@ -160,6 +312,7 @@ function DraggablePoint({
     item,
     pointIndex,
     datasetIndex,
+    mode,
     colour,
     isSelected,
     datasetId,
@@ -179,15 +332,13 @@ function DraggablePoint({
     const contextX = useSharedValue(0);
     const contextY = useSharedValue(0);
 
-    const SLOP = 10;
+    const SLOP = 50;
 
+    const isEnabled = (!datasetIsLocked && datasetIsActive && mode === 'points')
     const panGesture = Gesture.Pan()
+        .enabled(isEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
         .onStart(() => {
-            if (datasetIsLocked || !datasetIsActive) {
-                return;
-            }
-
             contextX.value = translateX.value;
             contextY.value = translateY.value;
 
@@ -198,9 +349,6 @@ function DraggablePoint({
 
         })
         .onUpdate((event) => {
-            if (datasetIsLocked || !datasetIsActive) {
-                return;
-            }
             translateX.value = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
             translateY.value = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
 
@@ -214,16 +362,11 @@ function DraggablePoint({
 
         })
         .onEnd(() => {
-            if (datasetIsLocked || !datasetIsActive) {
-                return;
-            }
-            // Send accurate final coordinates back to the image array
             runOnJS(onDragComplete)(item.id, translateX.value, translateY.value);
         });
 
 
-    const RADIUS = 30;
-    const RING_THICK = 5;
+    const RADIUS = 40;
 
     const containerStyle = {
         position: "absolute",
@@ -234,16 +377,8 @@ function DraggablePoint({
         alignItems: 'center',
         marginLeft: -RADIUS,
         marginTop: -RADIUS,
-        opacity: datasetIsLocked ? 0.8 : 1,
-    }
-
-    const coreDot = {
-        position: "absolute",
-        width: 2 * (RADIUS - RING_THICK),
-        height: 2 * (RADIUS - RING_THICK),
-        borderRadius: (RADIUS - RING_THICK),
-        backgroundColor: colour,
-        zIndex: 3,
+        opacity: mode !== 'points' ? 0.4
+            : datasetIsLocked ? 0.8 : 1,
     }
 
     const ring = {
@@ -251,19 +386,29 @@ function DraggablePoint({
         borderRadius: 999
     }
 
+    const coreDot = {
+        width: 2 * (RADIUS),
+        height: 2 * (RADIUS),
+        backgroundColor: colour,
+        zIndex: 1,
+    }
+
     const innerRing = {
         width: 2 * (RADIUS),
         height: 2 * (RADIUS),
-        backgroundColor: isSelected ? 'white' : colour,
-        zIndex: 2
+        borderWidth: isSelected ? 28 : 18,
+        backgroundColor: "#00000000",
+        borderColor: 'white',
+        zIndex: 2,
     }
+
     const outerRing = {
-        width: 2 * (RADIUS + 3 * RING_THICK),
-        height: 2 * (RADIUS + 3 * RING_THICK),
-        backgroundColor: 'white',
-        borderWidth: 1,
+        width: 2 * (RADIUS),
+        height: 2 * (RADIUS),
+        borderWidth: 6,
+        backgroundColor: "#00000000",
         borderColor: 'black',
-        zIndex: 1
+        zIndex: 3,
     }
 
     const animatedProps = useAnimatedStyle(() => ({
@@ -328,56 +473,28 @@ function DraggablePoint({
                     animatedProps,
                 ]}>
 
-                    {datasetIsActive && (
-                        <View style={[
-                            ring,
-                            outerRing
-                        ]} />
-                    )}
-                    <View style={[
-                        coreDot,
-                    ]} />
+
                     <View style={[
                         ring,
-                        innerRing
+                        coreDot,
                     ]} />
+
+                    {datasetIsActive && (
+                        <>
+                            <View style={[
+                                ring,
+                                innerRing
+                            ]} />
+                            <View style={[
+                                ring,
+                                outerRing
+                            ]} />
+                        </>
+                    )}
                 </Animated.View>
             </GestureDetector>
         </>
     );
-}
-
-function pointsToPath(points, imageWidth, imageHeight, curveMode) {
-    'worklet';
-
-    if ((points?.length ?? 0) < 2) {
-        return '';
-    }
-
-    let curvePoints;
-
-    switch (curveMode) {
-
-        case 'none':
-            return null;
-
-        case 'linear':
-            curvePoints = points;
-            break;
-
-        case 'spline':
-            curvePoints = generateSpline(points, 10);
-            break;
-        default:
-            curvePoints = points;
-    }
-
-    return curvePoints.reduce((path, p, i) => {
-        if (i === 0) {
-            return `M${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
-        }
-        return `${path} L${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
-    }, '');
 }
 
 function AnimatedDatasetPath({
@@ -420,12 +537,14 @@ export default function GraphCanvas(props) {
         pickImage,
         datasets,
         calibration,
+        currentMode,
 
         activeDataset,
         activeDatasetId,
         selectedPointRef,
         setSelectedPointRef,
         finishDragTransaction,
+        finishCalibrationDragTransaction,
         addPoint,
         setPointPosition,
 
@@ -545,6 +664,17 @@ export default function GraphCanvas(props) {
         ],
     }));
 
+    const sharedCalibrationPoints = useSharedValue([]);
+
+    useEffect(() => {
+        sharedCalibrationPoints.value =
+        {
+            origin: { x: calibration.origin.x, y: calibration.origin.y },
+            xRef: { x: calibration.xRef.x, y: calibration.xRef.y },
+            yRef: { x: calibration.yRef.x, y: calibration.yRef.y }
+        }
+    }, [calibration]);
+
     const sharedDatasets = useSharedValue([]);
 
     useEffect(() => {
@@ -573,7 +703,7 @@ export default function GraphCanvas(props) {
                     <AppIcon
                         name={"add"}
                         size={48}
-                        color={COLOURS.buttonIcon}
+                        colour={COLOURS.buttonIcon}
                     />
 
                     <Text style={styles.emptyTitle}>
@@ -592,7 +722,7 @@ export default function GraphCanvas(props) {
                     <AppIcon
                         name={"add"}
                         size={48}
-                        color={COLOURS.buttonIcon}
+                        colour={COLOURS.buttonIcon}
                     />
 
                     <Text
@@ -626,52 +756,57 @@ export default function GraphCanvas(props) {
                                 <Image source={{ uri: image }} style={
                                     [
                                         {
-                                            width: imageWidth / 1,
-                                            height: imageHeight / 1,
+                                            width: imageWidth,
+                                            height: imageHeight,
                                         }
                                     ]
                                 } />
 
-                                <CalibrationLine
-                                    p1={calibration.origin}
-                                    p2={{ x: calibration?.xRef?.x, y: calibration?.origin?.y }}
+                                <Svg
+                                    style={[
+                                        StyleSheet.absoluteFill
+                                    ]}
+                                >
+                                    <AnimatedCalibrationPath
+                                        calibrationPoints={sharedCalibrationPoints}
+                                        imageWidth={imageWidth}
+                                        imageHeight={imageHeight}
+                                        scale={scale}
+                                    />
+
+                                </Svg>
+
+                                <DraggableCalibrationPoint
+                                    calibrationType={'origin'}
+                                    mode={currentMode}
+                                    colour="blue"
+                                    scale={scale}
+                                    imageWidth={imageWidth}
+                                    imageHeight={imageHeight}
+                                    sharedCalibrationPoints={sharedCalibrationPoints}
+                                    onDragComplete={finishCalibrationDragTransaction}
+                                />
+
+                                <DraggableCalibrationPoint
+                                    calibrationType={'xRef'}
+                                    mode={currentMode}
                                     colour="green"
                                     scale={scale}
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
+                                    sharedCalibrationPoints={sharedCalibrationPoints}
+                                    onDragComplete={finishCalibrationDragTransaction}
                                 />
 
-                                <CalibrationLine
-                                    p1={calibration.origin}
-                                    p2={{ x: calibration?.origin?.x, y: calibration?.yRef?.y }}
+                                <DraggableCalibrationPoint
+                                    calibrationType={'yRef'}
+                                    mode={currentMode}
                                     colour="orange"
                                     scale={scale}
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
-                                />
-
-                                <CalibrationDot
-                                    p1={calibration.origin}
-                                    color="blue"
-                                    scale={scale}
-                                    imageWidth={imageWidth}
-                                    imageHeight={imageHeight}
-                                />
-
-                                <CalibrationDot
-                                    p1={{ x: calibration.xRef.x, y: calibration.origin.y }}
-                                    color="green"
-                                    scale={scale}
-                                    imageWidth={imageWidth}
-                                    imageHeight={imageHeight}
-                                />
-
-                                <CalibrationDot
-                                    p1={{ x: calibration.origin.x, y: calibration.yRef.y }}
-                                    color="orange"
-                                    scale={scale}
-                                    imageWidth={imageWidth}
-                                    imageHeight={imageHeight}
+                                    sharedCalibrationPoints={sharedCalibrationPoints}
+                                    onDragComplete={finishCalibrationDragTransaction}
                                 />
 
                                 {datasets
@@ -689,16 +824,14 @@ export default function GraphCanvas(props) {
                                                 ]}
                                             >
                                                 <AnimatedDatasetPath
-                                                    key={d.id}
                                                     datasetIndex={datasetIndex}
                                                     sharedDatasetPoints={sharedDatasets}
                                                     imageWidth={imageWidth}
                                                     imageHeight={imageHeight}
                                                     curveMode={d.curveMode}
-                                                    colour={d.color}
+                                                    colour={d.colour}
                                                     scale={scale}
                                                 />
-
                                             </Svg>
 
                                         )
@@ -721,8 +854,9 @@ export default function GraphCanvas(props) {
                                                     key={p.id}
                                                     pointIndex={pointIndex}
                                                     datasetIndex={datasetIndex}
+                                                    mode={currentMode}
                                                     item={p}
-                                                    colour={d.color}
+                                                    colour={d.colour}
                                                     isSelected={isSelected}
                                                     datasetId={d.id}
                                                     datasetIsActive={datasetIsActive}

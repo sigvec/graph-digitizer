@@ -87,7 +87,7 @@ export function TextInputModal({
 }
 
 // ===================================
-// ColorPickerModal
+// ColourPickerModal
 // ===================================
 
 
@@ -113,7 +113,7 @@ export function ColourPickerModal({
                         {title}
                     </Text>
 
-                    <View style={styles.colorGrid}>
+                    <View style={styles.colourGrid}>
 
                         {DATASET_COLOURS.map(colour => (
 
@@ -258,7 +258,7 @@ const styles = StyleSheet.create({
         justifyContent: 'space-between',
     },
 
-    colorGrid: {
+    colourGrid: {
         flexDirection: 'row',
         flexWrap: 'wrap',
         justifyContent: 'center',
