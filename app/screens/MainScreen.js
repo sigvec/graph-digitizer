@@ -32,6 +32,7 @@ import {
 
 import AppIcon from '../components/AppIcon';
 import IconButton from '../components/IconButton';
+import { DatasetActionButton } from '../components/IconButton';
 import MenuButton from '../components/MenuButton';
 import TabButton from '../components/TabButton';
 
@@ -731,6 +732,26 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setDirty(true)
   }
 
+  function createDuplicateDataset(dataset) {
+
+    const usedColours = datasets.map(d => d.colour);
+
+    const newColour =
+      DATASET_COLOURS.find(c => !usedColours.includes(c))
+      ?? DATASET_COLOURS[0];
+
+    return {
+      ...dataset,
+      id: generateId(),
+      name: dataset.name + " Copy",
+      colour: newColour,
+      points: dataset.points.map(p => ({
+        ...p,
+        id: generateId(),
+      })),
+    };
+  }
+
   function toggleCurveVisibility(
     datasetId
   ) {
@@ -1389,13 +1410,18 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
               <View style={styles.statusBar}>
 
 
-                <View style={styles.statusBarSection} >
+                <View style={[
+                  styles.statusBarSection,
+                  {
+                    flex: 2,
+                  }
+                ]
+                } >
                   {mode === 'points' &&
                     <>
                       <View style={styles.datasetInfo}>
                         <View
                           style={[
-
                             {
                               width: 6,
                               height: 6,
@@ -1408,7 +1434,11 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                           ]}
                         />
 
-                        <Text style={styles.statusText}>
+                        <Text
+                          style={styles.statusText}
+                          numberOfLines={1}
+                          ellipsizeMode="tail"
+                        >
                           {activeDataset?.name || 'None'}
                         </Text>
 
@@ -1532,7 +1562,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                 <View style={[
                   styles.statusBarSection,
-                  { alignItems: 'flex-end' }
+                  {
+                    alignItems: 'flex-end',
+                  }
                 ]
                 } >
 
@@ -1737,11 +1769,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                           }
                           style={[
                             styles.datasetRow,
-
                             {
                               opacity: rowOpacity,
                             },
-
                             d.id === activeDatasetId &&
                             styles.activeDatasetRow,
                           ]}
@@ -1765,7 +1795,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                           </View>
 
-                          <View style={styles.datasetActions}>
+                          <View style={styles.datasetOptions}>
 
                             <IconButton
                               icon={d.curveMode === 'none' ? 'hideCurve' : d.curveMode === 'linear' ? 'showCurveLine' : 'showCurveSpline'}
@@ -1802,46 +1832,79 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     <View style={styles.datasetToolbar}>
 
 
-                      <IconButton
-                        icon="edit"
-                        label="Rename"
-                        onPress={handleRenameDataset}
-                      />
+                      <View style={styles.toolBarButton}>
+                        <DatasetActionButton
+                          icon="edit"
+                          label="Rename"
+                          onPress={handleRenameDataset}
+                        />
+                      </View>
 
-                      <IconButton
-                        icon="palette"
-                        label="Colour"
-                        onPress={() => setColourPickerVisible(true)}
-                      />
+                      <View style={styles.toolBarButton}>
+                        <DatasetActionButton
+                          icon="palette"
+                          label="Colour"
+                          onPress={() => setColourPickerVisible(true)}
+                        />
+                      </View>
 
-                      <IconButton
-                        icon="delete"
-                        label="Delete"
-                        onPress={handleDeleteDataset}
-                      />
-                      <IconButton
-                        icon="add"
-                        label="New"
-                        onPress={() => {
+                      <View style={styles.toolBarButton}>
+                        <DatasetActionButton
+                          icon="duplicate"
+                          label="Duplicate"
+                          onPress={() => {
 
-                          const newDataset = createEmptyDataset(datasets.length);
+                            const duplicateDataset = createDuplicateDataset(activeDataset);
 
-                          setDatasets(prev => [
-                            ...prev,
-                            newDataset,
-                          ]);
+                            setDatasets(prev => [
+                              ...prev,
+                              duplicateDataset,
+                            ]);
 
-                          setActiveDatasetId(
-                            newDataset.id
-                          );
+                            setActiveDatasetId(
+                              duplicateDataset.id
+                            );
 
-                          setSelectedPointRef(null);
+                            setSelectedPointRef(null);
 
-                          setDirty(true)
+                            setDirty(true)
 
-                        }}
-                      />
+                          }}
+                        />
+                      </View>
 
+                      <View style={styles.toolBarButton}>
+                        <DatasetActionButton
+                          icon="delete"
+                          label="Delete"
+                          onPress={handleDeleteDataset}
+                        />
+                      </View>
+
+                      <View style={styles.toolBarButton}>
+                        <DatasetActionButton
+                          icon="add"
+                          label="New"
+                          onPress={() => {
+
+                            const newDataset = createEmptyDataset(datasets.length);
+
+                            setDatasets(prev => [
+                              ...prev,
+                              newDataset,
+                            ]);
+
+                            setActiveDatasetId(
+                              newDataset.id
+                            );
+
+                            setSelectedPointRef(null);
+
+                            setDirty(true)
+
+                          }}
+                        />
+                      </View>
 
                     </View>
 
@@ -2003,20 +2066,22 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                                 height: 10,
                                 borderRadius: 5,
                                 marginRight: 8,
-                              },
-                              {
                                 backgroundColor: activeDataset.colour,
                               },
                             ]}
                           />
 
-                          <Text style={[
-                            {
-                              ...TYPOGRAPHY.title,
-                              color: COLOURS.text,
-                            },
-                          ]
-                          }>
+                          <Text
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={[
+                              {
+                                ...TYPOGRAPHY.title,
+                                color: COLOURS.text,
+                                flexShrink: 1,
+                              },
+                            ]
+                            }>
                             {activeDataset?.name || 'None'}
                           </Text>
 
@@ -2411,6 +2476,7 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
+    marginRight: 2,
   },
 
   datasetColourDot: {
@@ -2421,10 +2487,11 @@ const styles = StyleSheet.create({
   },
 
   datasetName: {
+    flexShrink: 1,
     fontSize: 16,
   },
 
-  datasetActions: {
+  datasetOptions: {
     flexDirection: 'row',
     alignItems: 'center',
   },
@@ -2495,7 +2562,6 @@ const styles = StyleSheet.create({
 
   statusBar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
     backgroundColor: COLOURS.surfaceAlt,
     alignItems: 'center',
     paddingHorizontal: SPACING.md,
@@ -2506,11 +2572,14 @@ const styles = StyleSheet.create({
   },
 
   statusBarSection: {
+    flex: 1,
+    alignItems: 'flex-start',
     ...TYPOGRAPHY.small,
     color: COLOURS.muted,
   },
 
   statusText: {
+    flexShrink: 1,
     ...TYPOGRAPHY.small,
     color: COLOURS.muted,
   },

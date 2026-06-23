@@ -16,6 +16,7 @@ export default function IconButton({
     selected = false,
     alert = false,
     disabled = false,
+    style
 }) {
 
     const iconColour =
@@ -28,6 +29,7 @@ export default function IconButton({
             onPress={onPress}
             style={({ pressed }) => [
                 styles.button,
+                style,
 
                 pressed &&
                 !disabled &&
@@ -74,6 +76,18 @@ export default function IconButton({
     );
 }
 
+
+export function DatasetActionButton(props) {
+
+    return (
+        <IconButton
+            {...props}
+            style={styles.datasetButton}
+        />
+    );
+
+}
+
 const styles = StyleSheet.create({
     button: {
         flexDirection: 'row',
@@ -89,6 +103,11 @@ const styles = StyleSheet.create({
         borderRadius: 8,
 
         borderWidth: 1,
+    },
+
+    datasetButton: {
+        flexDirection: 'column',
+        paddingHorizontal: 2,
     },
 
     buttonNormal: {
