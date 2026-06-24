@@ -577,7 +577,7 @@ export default function GraphCanvas(props) {
         displaySize.height / imageHeight
     );
 
-    const maxScale = fitScale * 4;
+    const maxScale = fitScale * 10;
     const minScale = fitScale * 0.5;
 
 

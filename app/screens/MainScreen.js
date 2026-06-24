@@ -1732,8 +1732,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         />
                       </View>
                     </View>
-
-
                   </View>
 
                 )}
@@ -1997,19 +1995,19 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     <View style={styles.pointControls}>
                       <IconButton
                         icon="nudgeLeft"
-                        onPress={() => nudgePoint(-1, 0)}
+                        onPress={() => nudgePoint(-1 / zoomDisplay, 0)}
                       />
                       <IconButton
                         icon="nudgeRight"
-                        onPress={() => nudgePoint(1, 0)}
+                        onPress={() => nudgePoint(1 / zoomDisplay, 0)}
                       />
                       <IconButton
                         icon="nudgeUp"
-                        onPress={() => nudgePoint(0, -1)}
+                        onPress={() => nudgePoint(0, -1 / zoomDisplay)}
                       />
                       <IconButton
                         icon="nudgeDown"
-                        onPress={() => nudgePoint(0, 1)}
+                        onPress={() => nudgePoint(0, 1 / zoomDisplay)}
                       />
                     </View>
 
@@ -2253,22 +2251,22 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                       <View style={styles.pointControls}>
                         <IconButton
                           icon="nudgeLeft"
-                          onPress={() => nudgeCalibrationPoint(-1, 0)}
+                          onPress={() => nudgeCalibrationPoint(-1 / zoomDisplay, 0)}
                           disabled={mode === 'yRef'}
                         />
                         <IconButton
                           icon="nudgeRight"
-                          onPress={() => nudgeCalibrationPoint(1, 0)}
+                          onPress={() => nudgeCalibrationPoint(1 / zoomDisplay, 0)}
                           disabled={mode === 'yRef'}
                         />
                         <IconButton
                           icon="nudgeUp"
-                          onPress={() => nudgeCalibrationPoint(0, -1)}
+                          onPress={() => nudgeCalibrationPoint(0, -1 / zoomDisplay)}
                           disabled={mode === 'xRef'}
                         />
                         <IconButton
                           icon="nudgeDown"
-                          onPress={() => nudgeCalibrationPoint(0, 1)}
+                          onPress={() => nudgeCalibrationPoint(0, 1 / zoomDisplay)}
                           disabled={mode === 'xRef'}
                         />
                       </View>

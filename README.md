@@ -31,6 +31,14 @@ The application is designed for extracting numerical data from graphs when the o
 
 ## Screenshots
 
+### Spline Interpolation
+
+Visualize interpolated curves and manage multiple datasets.
+
+<p align="center">
+  <img src="screenshots/interpolation.png" width="350">
+</p>
+
 ### Calibration
 
 Define graph axes and reference points for coordinate conversion.
@@ -47,18 +55,9 @@ Digitize points and perform curve fitting.
   <img src="screenshots/data-fit.png" width="350">
 </p>
 
-### Spline Interpolation
-
-Visualize interpolated curves and manage multiple datasets.
-
-<p align="center">
-  <img src="screenshots/interpolation.png" width="350">
-</p>
-
-
 ## Status
 
-Version 0.1.0
+Version 0.1.2
 
 ## License
 
