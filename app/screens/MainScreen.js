@@ -10,6 +10,7 @@ import {
   TouchableOpacity,
   Modal,
   Alert,
+  Switch,
 } from "react-native";
 
 import {
@@ -114,6 +115,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [exportMode, setExportMode] = useState("raw");
   const [interpStep, setInterpStep] = useState("1");
+  const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
 
   // ==================================================
   // Refs / Shared Values
@@ -887,19 +889,16 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     const radius = 5 / zoomDisplay;
 
-    for (const d of datasets) {
+    for (let i = datasets.length - 1; i >= 0; i--) {
+      const d = datasets[i];
 
-      if (!d.visible) {
-        continue;
-      }
-
-      for (const p of d.points) {
+      for (let j = d.points.length - 1; j >= 0; j--) {
+        const p = d.points[j];
 
         const dx = p.x - x;
         const dy = p.y - y;
 
-        const dist =
-          Math.sqrt(dx * dx + dy * dy);
+        const dist = Math.sqrt(dx * dx + dy * dy);
 
         if (dist <= radius) {
           return {
@@ -907,7 +906,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
             pointId: p.id,
           };
         }
+
       }
+
     }
 
     return null;
@@ -1035,14 +1036,14 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       return;
     }
 
-    if (!selectedPointRef) {
+    if (!selectedPointRef && !nudgeAllPoints) {
       return;
     }
 
     setDatasets(prev =>
       prev.map(d => {
 
-        if (d.id !== selectedPointRef.datasetId) {
+        if (d.id !== activeDatasetId) {
           return d;
         }
 
@@ -1052,7 +1053,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
           points: d.points.map(p => {
 
             if (
-              p.id !== selectedPointRef.pointId
+              !nudgeAllPoints && p.id !== selectedPointRef.pointId
             ) {
               return p;
             }
@@ -1912,51 +1913,51 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                 {workspaceTab === 'edit' && (
 
-                  <View style={styles.workspaceToolBackground}>
+                  <View style={[
+                    styles.workspaceToolBackground,
+                    { paddingVertical: 0 }
+                  ]}>
 
 
-                    <View style={styles.datasetInfo}>
+                    <View
+                      style={[
+                        {
+                          flexDirection: 'row',
+                          alignItems: 'center',
+                          paddingTop: 2
+                        },
+                      ]}
+                    >
                       <View
                         style={[
-
                           {
                             width: 10,
                             height: 10,
                             borderRadius: 5,
                             marginRight: 8,
-                          },
-                          {
                             backgroundColor: activeDataset.colour,
                           },
                         ]}
                       />
 
-                      <Text style={[
-                        {
-                          ...TYPOGRAPHY.title,
-                          color: COLOURS.text,
-                        },
-                      ]
-                      }>
-                        {activeDataset?.name || 'None'}
-                      </Text>
+                      {selectedPointData ? (
+                        < Text style={[
+                          {
+                            ...TYPOGRAPHY.body,
+                            color: COLOURS.text,
+                          },
+                        ]
+                        }>
+                          Point {selectedPointIndex + 1} / {pointCount}
+                        </Text>
+                      ) : (
+                        <Text style={styles.statusText}>
+                          (No selection)
+                        </Text>
+                      )}
 
                     </View>
-                    {selectedPointData ? (
-                      < Text style={[
-                        {
-                          ...TYPOGRAPHY.body,
-                          color: COLOURS.text,
-                        },
-                      ]
-                      }>
-                        Point {selectedPointIndex + 1} / {pointCount}
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusText}>
-                        (No selection)
-                      </Text>
-                    )}
+
 
                     <View style={
                       [{
@@ -1968,7 +1969,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         gap: 20
                       },]
                     }>
-
 
                       {selectedPointData ? (
                         <Text>X: {graphPoint
@@ -2008,6 +2008,21 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                       <IconButton
                         icon="nudgeDown"
                         onPress={() => nudgePoint(0, 1 / zoomDisplay)}
+                      />
+                    </View>
+                    <View style={[
+                      {
+                        flexDirection: 'row',
+                        gap: 8,
+                        alignItems: 'center',
+                        justifyContent: 'center'
+                      },
+                    ]
+                    }>
+                      <Text>Nudge whole dataset</Text>
+                      <Switch
+                        value={nudgeAllPoints}
+                        onValueChange={setNudgeAllPoints}
                       />
                     </View>
 
@@ -2496,16 +2511,14 @@ const styles = StyleSheet.create({
 
   datasetToolbar: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    gap: 4,
+    gap: 2,
   },
 
   pointControls: {
-    flex: 1,
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 8,
-    marginTop: 16,
+    marginTop: 8,
     alignItems: 'center',
     justifyContent: 'center'
   },
