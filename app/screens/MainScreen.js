@@ -921,8 +921,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     if (hit) {
       const selectedDataset = datasets.find(d => d.id === hit.datasetId);
 
-      const hitPoint = selectedDataset.points.find(p => p.id === hit.pointId);
-
       setSelectedPointRef(hit);
       setActiveDatasetId(hit.datasetId);
 
@@ -1915,7 +1913,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                   <View style={[
                     styles.workspaceToolBackground,
-                    { paddingVertical: 0 }
+                    {
+                      paddingVertical: 0,
+                      justifyContent: 'space-between',
+                    }
                   ]}>
 
 
@@ -1924,6 +1925,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         {
                           flexDirection: 'row',
                           alignItems: 'center',
+                          justifyContent: 'space-between',
                           paddingTop: 2
                         },
                       ]}
@@ -1939,12 +1941,26 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                           },
                         ]}
                       />
-
+                      <IconButton
+                        icon="previous"
+                        onPress={() => {
+                          if (!selectedPointRef) {
+                            return;
+                          }
+                          const prevIndex = (selectedPointIndex - 1 + activeDataset.points.length) % activeDataset.points.length;
+                          setSelectedPointRef({
+                            datasetId: activeDataset.id,
+                            pointId: activeDataset.points[prevIndex].id,
+                          })
+                        }}
+                        disabled={!selectedPointRef}
+                      />
                       {selectedPointData ? (
                         < Text style={[
                           {
                             ...TYPOGRAPHY.body,
                             color: COLOURS.text,
+                            paddingHorizontal: 5
                           },
                         ]
                         }>
@@ -1955,102 +1971,133 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                           (No selection)
                         </Text>
                       )}
-
+                      <IconButton
+                        icon="next"
+                        onPress={() => {
+                          if (!selectedPointRef) {
+                            return;
+                          }
+                          const nextIndex = (selectedPointIndex + 1) % activeDataset.points.length;
+                          setSelectedPointRef({
+                            datasetId: activeDataset.id,
+                            pointId: activeDataset.points[nextIndex].id,
+                          })
+                        }}
+                        disabled={!selectedPointRef}
+                      />
+                      <View
+                        style={[
+                          {
+                            width: 10,
+                            height: 10,
+                            borderRadius: 5,
+                            marginRight: 8,
+                          },
+                        ]}
+                      />
                     </View>
-
-
-                    <View style={
-                      [{
-                        ...TYPOGRAPHY.body,
-                        color: COLOURS.text,
-                        flexDirection: 'row',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        gap: 20
-                      },]
-                    }>
-
-                      {selectedPointData ? (
-                        <Text>X: {graphPoint
-                          ? graphPoint.x.toFixed(1)
-                          : 'None'}
-                        </Text>
-                      ) : (
-                        <Text style={styles.statusTextCoords}>X:
-                        </Text>
-                      )}
-
-                      {selectedPointData ? (
-                        <Text>Y: {graphPoint
-                          ? graphPoint.y.toFixed(1)
-                          : 'None'}
-                        </Text>
-                      ) : (
-                        <Text style={styles.statusTextCoords}>Y:</Text>
-                      )}
-
-                    </View>
-
 
                     <View style={styles.pointControls}>
+                      <Text
+                        style={[
+                          {
+                            flex: 1,
+                            alignItems: 'center',
+                            paddingTop: 2
+                          },
+                        ]}>
+                        Nudge:
+                      </Text>
                       <IconButton
                         icon="nudgeLeft"
                         onPress={() => nudgePoint(-1 / zoomDisplay, 0)}
+                        disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
                       />
+                      <View>
+                        <IconButton
+                          icon="nudgeUp"
+                          onPress={() => nudgePoint(0, -1 / zoomDisplay)}
+                          disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
+                        />
+                        <IconButton
+                          icon="nudgeDown"
+                          onPress={() => nudgePoint(0, 1 / zoomDisplay)}
+                          disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
+                        />
+
+                      </View>
                       <IconButton
                         icon="nudgeRight"
                         onPress={() => nudgePoint(1 / zoomDisplay, 0)}
+                        disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
                       />
-                      <IconButton
-                        icon="nudgeUp"
-                        onPress={() => nudgePoint(0, -1 / zoomDisplay)}
-                      />
-                      <IconButton
-                        icon="nudgeDown"
-                        onPress={() => nudgePoint(0, 1 / zoomDisplay)}
-                      />
+                      <View
+                        style={[
+                          {
+                            flex: 1,
+                            alignItems: 'center',
+                          },
+                        ]}
+                      >
+                        <Switch
+                          value={nudgeAllPoints}
+                          onValueChange={setNudgeAllPoints}
+                        />
+                        <Text>All points</Text>
+                      </View>
+
+
+
                     </View>
+
                     <View style={[
                       {
                         flexDirection: 'row',
+                        flexWrap: 'wrap',
                         gap: 8,
+                        marginTop: 8,
                         alignItems: 'center',
                         justifyContent: 'center'
-                      },
+                      }
                     ]
                     }>
-                      <Text>Nudge whole dataset</Text>
-                      <Switch
-                        value={nudgeAllPoints}
-                        onValueChange={setNudgeAllPoints}
-                      />
+                      <View style={[
+                        {
+                          flex: 1,
+                        }
+                      ]
+                      }>
+                        <IconButton
+                          icon="delete"
+                          label="Delete Point"
+                          onPress={selectedPointRef && handleDeletePoint}
+                          disabled={!selectedPointRef || activeDataset.locked}
+                        />
+                      </View>
+
+                      <View style={[
+                        {
+                          flex: 1,
+                        }
+                      ]
+                      }>
+                        <IconButton
+                          icon="clearAll"
+                          label="Clear All"
+                          onPress={() => {
+                            setDatasets(prev =>
+                              prev.map(d =>
+                                d.id === activeDatasetId
+                                  ? { ...d, points: [] }
+                                  : d
+                              )
+                            );
+                          }}
+                          disabled={activeDataset.locked}
+                        />
+                      </View>
+
                     </View>
-
-                    <View style={styles.pointControls}>
-                      <IconButton
-                        icon="delete"
-                        label="Delete Point"
-                        onPress={selectedPointRef && handleDeletePoint}
-                        disabled={!selectedPointRef || activeDataset.locked}
-                      />
-
-                      <IconButton
-                        icon="clearAll"
-                        label="Clear All"
-                        onPress={() => {
-                          setDatasets(prev =>
-                            prev.map(d =>
-                              d.id === activeDatasetId
-                                ? { ...d, points: [] }
-                                : d
-                            )
-                          );
-                        }}
-                      />
-
-                    </View>
-
-
                   </View>
                 )}
 
@@ -2516,11 +2563,12 @@ const styles = StyleSheet.create({
 
   pointControls: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-    marginTop: 8,
+    gap: 4,
+    marginTop: 4,
     alignItems: 'center',
-    justifyContent: 'center'
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
+    borderRadius: 10,
   },
 
   controls: {
