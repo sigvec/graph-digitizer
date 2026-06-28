@@ -141,12 +141,12 @@ function DraggableCalibrationPoint({
             let translateX;
             let translateY;
 
-            if (calibrationType === 'origin' || calibrationType == 'xRef') {
+            if (calibrationType === 'origin' || calibrationType === 'x0' || calibrationType === 'x1') {
                 translateX = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
             } else {
                 translateX = sharedCalibrationPoints.value.origin.x;
             }
-            if (calibrationType === 'origin' || calibrationType == 'yRef') {
+            if (calibrationType === 'origin' || calibrationType === 'y0' || calibrationType === 'y1') {
                 translateY = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
             } else {
                 translateY = contextY.value;
@@ -208,16 +208,18 @@ function DraggableCalibrationPoint({
         let translateX;
         let translateY;
 
-        if (calibrationType === 'origin' || calibrationType == 'xRef') {
+        if (calibrationType === 'origin' || calibrationType === 'x0' || calibrationType === 'x1') {
             translateX = sharedCalibrationPoints.value[calibrationType].x;
         } else {
             translateX = sharedCalibrationPoints.value.origin.x;
         }
-        if (calibrationType === 'origin' || calibrationType == 'yRef') {
+        if (calibrationType === 'origin' || calibrationType === 'y0' || calibrationType === 'y1') {
             translateY = sharedCalibrationPoints.value[calibrationType].y;
         } else {
             translateY = sharedCalibrationPoints.value.origin.y;
         }
+
+        const hide = (calibrationType === 'x0' && sharedCalibrationPoints.value.x0.x === null) || (calibrationType === 'y0' && sharedCalibrationPoints.value.y0.y === null)
 
         return (
             {
@@ -226,6 +228,7 @@ function DraggableCalibrationPoint({
                     { translateY: translateY * imageHeight / LOGICAL_HEIGHT },
                     { scale: 0.1 / scale.value }
                 ],
+                opacity: hide ? 0 : 1
             }
         )
     });
@@ -262,15 +265,15 @@ function AnimatedCalibrationPath({
         const c = calibrationPoints.value;
         const points = (
             [
-                { x: c.origin.x, y: c.origin.y },
-                { x: c.origin.x, y: c.yRef.y }
+                { x: c.origin.x, y: 0 },
+                { x: c.origin.x, y: LOGICAL_HEIGHT }
             ]
         );
 
         const d = pointsToPath(points, imageWidth, imageHeight, 'linear');
 
         return {
-            strokeWidth: 5 / scale.value,
+            strokeWidth: 3 / scale.value,
             d: d
         };
     });
@@ -279,15 +282,15 @@ function AnimatedCalibrationPath({
         const c = calibrationPoints.value;
         const points = (
             [
-                { x: c.origin.x, y: c.origin.y },
-                { x: c.xRef.x, y: c.origin.y }
+                { x: 0, y: c.origin.y },
+                { x: LOGICAL_WIDTH, y: c.origin.y }
             ]
         );
 
         const d = pointsToPath(points, imageWidth, imageHeight, 'linear');
 
         return {
-            strokeWidth: 5 / scale.value,
+            strokeWidth: 3 / scale.value,
             d: d
         };
     });
@@ -670,8 +673,12 @@ export default function GraphCanvas(props) {
         sharedCalibrationPoints.value =
         {
             origin: { x: calibration.origin.x, y: calibration.origin.y },
-            xRef: { x: calibration.xRef.x, y: calibration.xRef.y },
-            yRef: { x: calibration.yRef.x, y: calibration.yRef.y }
+
+            x0: { x: calibration.x.p0, y: null },
+            x1: { x: calibration.x.p1, y: null },
+
+            y0: { x: null, y: calibration.y.p0 },
+            y1: { x: null, y: calibration.y.p1 },
         }
     }, [calibration]);
 
@@ -787,8 +794,34 @@ export default function GraphCanvas(props) {
                                     onDragComplete={finishCalibrationDragTransaction}
                                 />
 
+                                {calibration.x.p0 &&
+                                    <DraggableCalibrationPoint
+                                        calibrationType={'x0'}
+                                        mode={currentMode}
+                                        colour="green"
+                                        scale={scale}
+                                        imageWidth={imageWidth}
+                                        imageHeight={imageHeight}
+                                        sharedCalibrationPoints={sharedCalibrationPoints}
+                                        onDragComplete={finishCalibrationDragTransaction}
+                                    />
+                                }
+
+                                {calibration.y.p0 &&
+                                    <DraggableCalibrationPoint
+                                        calibrationType={'y0'}
+                                        mode={currentMode}
+                                        colour="orange"
+                                        scale={scale}
+                                        imageWidth={imageWidth}
+                                        imageHeight={imageHeight}
+                                        sharedCalibrationPoints={sharedCalibrationPoints}
+                                        onDragComplete={finishCalibrationDragTransaction}
+                                    />
+                                }
+
                                 <DraggableCalibrationPoint
-                                    calibrationType={'xRef'}
+                                    calibrationType={'x1'}
                                     mode={currentMode}
                                     colour="green"
                                     scale={scale}
@@ -799,7 +832,7 @@ export default function GraphCanvas(props) {
                                 />
 
                                 <DraggableCalibrationPoint
-                                    calibrationType={'yRef'}
+                                    calibrationType={'y1'}
                                     mode={currentMode}
                                     colour="orange"
                                     scale={scale}
