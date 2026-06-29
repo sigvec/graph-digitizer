@@ -10,15 +10,30 @@ The application is designed for extracting numerical data from graphs when the o
 
 ## Features
 
-* Load graph and chart images
-* Calibrate graph coordinates using reference points
-* Create and manage multiple datasets
-* Add, move, and delete data points
-* Undo and redo editing operations
-* Pan and zoom the graph image
-* Save and load projects
-* Export datasets as CSV
-* Display linear or spline-interpolated curves
+### Calibration
+
+* One-point and two-point axis calibration
+* Linear and logarithmic axes
+* Draggable calibration handles
+* Live calibration guides
+
+### Digitizing
+
+* Multiple datasets
+* Real-time spline curves
+* Point nudging
+* Dataset translation
+* Undo/redo
+
+### Analysis
+
+* Linear regression
+* Interpolation
+
+### Projects
+
+* Save/load projects
+* CSV export
 
 ## Technology
 
@@ -36,15 +51,7 @@ The application is designed for extracting numerical data from graphs when the o
 Visualize interpolated curves and manage multiple datasets.
 
 <p align="center">
-  <img src="screenshots/interpolation.png" width="350">
-</p>
-
-### Calibration
-
-Define graph axes and reference points for coordinate conversion.
-
-<p align="center">
-  <img src="screenshots/calibration.png" width="350">
+  <img src="screenshots/demo.gif" width="350">
 </p>
 
 ### Data Fitting
@@ -55,9 +62,18 @@ Digitize points and perform curve fitting.
   <img src="screenshots/data-fit.png" width="350">
 </p>
 
+### Calibration
+
+Define graph axes and reference points for coordinate conversion.
+
+<p align="center">
+  <img src="screenshots/calibration.png" width="350">
+</p>
+
+
 ## Status
 
-Version 0.1.2
+Version 0.2.0
 
 ## License
 
