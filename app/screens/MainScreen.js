@@ -37,6 +37,9 @@ import { DatasetActionButton } from '../components/IconButton';
 import MenuButton from '../components/MenuButton';
 import TabButton from '../components/TabButton';
 
+import { generateSimpleCSV } from '../export/csv'
+import { transformPoint } from '../calibration/transform'
+
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 
@@ -50,14 +53,15 @@ import storage from '../../frontend/services/storage';
 
 import { hydrateProject } from '../utils/projectTransform';
 
-import GraphCanvas, { FocalPinchPan, PerfectSimultaneousPinchPan, FlawlessSimultaneousPinchPan, BoundedPinchPan } from '../components/GraphCanvas';
+import GraphCanvas from '../components/GraphCanvas';
+import CalibrationTab from '../components/Tabs/CalibrationTab';
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 import {
   LOGICAL_WIDTH,
   LOGICAL_HEIGHT,
 } from '../constants/geometry';
-import { AxisScale } from "../constants/calibration";
+import { AxisScale } from "../calibration/constants";
 
 import { TextInputModal, ProjectMenuModal, ColourPickerModal } from '../components/Modals';
 
@@ -159,13 +163,13 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const selectedPointData = getSelectedPointData()
 
   const graphPoint = selectedPointData
-    ? transformPoint(selectedPointData)
+    ? transformPoint(selectedPointData, calibration)
     : null;
 
   const pointCount = activeDataset?.points?.length || 0;
 
   const transformedActive = activeDataset.points
-    .map(transformPoint)
+    .map(p => transformPoint(p, calibration))
     .filter(Boolean);
 
   const linearFit = linearRegression(transformedActive);
@@ -473,7 +477,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       datasets: datasets.map(d => {
         const rawPoints = [...d.points];
         const pts = [...d.points].sort((a, b) => a.x - b.x);
-        const transformed = pts.map(transformPoint).filter(Boolean);
+        const transformed = pts.map(p => transformPoint(p, calibration)).filter(Boolean);
 
 
         return {
@@ -1125,57 +1129,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   }
 
   //
-  // Calibration
-  // --------------------------------------------------
-
-  function transformPoint(p) {
-
-    const { origin, x, y } = calibration;
-
-    if (!origin || !x || !y) return null;
-    const X_MIN = x.value0;
-    const X_MAX = x.value1;
-    const Y_MIN = y.value0;
-    const Y_MAX = y.value1;
-
-    const p0 = x.p0 ?? origin.x
-    const p1 = x.p1
-
-    const q0 = y.p0 ?? origin.y
-    const q1 = y.p1
-
-    if (isNaN(X_MIN) || isNaN(X_MAX) || isNaN(Y_MIN) || isNaN(Y_MAX)) return null;
-    if (p0 === p1 || q0 === q1) return null;
-
-    const xScale = (X_MAX - X_MIN) / (p1 - p0);
-    const yScale = (Y_MAX - Y_MIN) / (q0 - q1);
-
-    return {
-      x: (p.x - p0) * xScale + X_MIN,
-      y: (q0 - p.y) * yScale + Y_MIN,
-    };
-  }
-
-
-  function generateSimpleCSV(datasets) {
-    let rows = ["series,x,y"];
-
-    datasets.forEach(d => {
-
-      const pts = [...d.points].sort((a, b) => a.x - b.x);
-      const transformed = pts.map(transformPoint).filter(Boolean);
-
-      // raw data
-      transformed.forEach(p => {
-        rows.push(`${d.name},${p.x},${p.y},`);
-      });
-    });
-
-    return rows.join("\n");
-  }
-
-
-  //
   // Regression
   // --------------------------------------------------
 
@@ -1226,7 +1179,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   function computeStats(points) {
     if (!points.length) return null;
 
-    const transformed = points.map(transformPoint).filter(Boolean) || [];
+    const transformed = points.map(p => transformPoint(p, calibration)).filter(Boolean) || [];
 
     const xs = transformed.map(p => p.x);
     const ys = transformed.map(p => p.y);
@@ -2235,7 +2188,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               alert("Calibration incomplete");
                               return;
                             }
-                            const csv = generateSimpleCSV([activeDataset]);
+                            const csv = generateSimpleCSV([activeDataset], calibration);
                             await Clipboard.setStringAsync(csv);
                             alert("Copied!");
                           }}
@@ -2247,7 +2200,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               alert("Calibration incomplete");
                               return;
                             }
-                            const csv = generateSimpleCSV(datasets);
+                            const csv = generateSimpleCSV(datasets, calibration);
                             await Clipboard.setStringAsync(csv);
                             alert("Copied!");
                           }}
@@ -2258,247 +2211,17 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                 )}
 
                 {workspaceTab === 'calibrate' && (
-
-                  <ScrollView
-                    style={styles.workspaceToolbarContainer}
-                    vertical
-                  >
-
-                    <View style={styles.workspaceToolBackground}>
-
-
-                      <View style={styles.axisInputs}>
-                        <Text>X0:</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={x0Text}
-                          onChangeText={setX0Text}
-                          onEndEditing={({ nativeEvent }) => {
-                            const value = parseFloat(nativeEvent.text);
-                            if (updateCalibrationValue("x", "value0", value)) {
-                              setX0Text(String(value));
-                            } else {
-                              setX0Text(String(calibration.x.value0));
-                            }
-                          }} />
-                        <Text>X1:</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={x1Text}
-                          onChangeText={setX1Text}
-                          onEndEditing={({ nativeEvent }) => {
-                            const value = parseFloat(nativeEvent.text);
-                            if (updateCalibrationValue("x", "value1", value)) {
-                              setX1Text(String(value));
-                            } else {
-                              setX1Text(String(calibration.x.value1));
-                            }
-                          }} />
-                        <View style={[
-                          {
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: "#efefef",
-                            borderRadius: 10,
-                            paddingHorizontal: 4
-                          }
-                        ]
-                        }>
-                          <Text>Origin as X0</Text>
-                          <Switch
-                            value={calibration.x.p0 === null}
-                            onValueChange={() => {
-                              const prevCalibrationPoint = calibration.x;
-                              let newCalibrationPoint;
-
-                              if (calibration.x.p0 === null) {
-                                newCalibrationPoint = {
-                                  ...prevCalibrationPoint,
-                                  p0: (calibration.origin.x + calibration.x.p1) / 2
-                                };
-                              } else {
-                                newCalibrationPoint = {
-                                  ...prevCalibrationPoint,
-                                  p0: null
-                                };
-                                if (mode === 'x0') { setMode('origin') }
-                              }
-                              setCalibration(prev => ({
-                                ...prev,
-                                x: newCalibrationPoint,
-                              }));
-                            }
-                            }
-                          />
-                        </View>
-                      </View>
-                      <View style={styles.axisInputs}>
-
-                        <Text>Y0:</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={y0Text}
-                          onChangeText={setY0Text}
-                          onEndEditing={({ nativeEvent }) => {
-                            const value = parseFloat(nativeEvent.text);
-                            if (updateCalibrationValue("y", "value0", value)) {
-                              setY0Text(String(value));
-                            } else {
-                              setY0Text(String(calibration.y.value0));
-                            }
-                          }} />
-                        <Text>Y1:</Text>
-                        <TextInput
-                          style={styles.input}
-                          value={y1Text}
-                          onChangeText={setY1Text}
-                          onEndEditing={({ nativeEvent }) => {
-                            const value = parseFloat(nativeEvent.text);
-                            if (updateCalibrationValue("y", "value1", value)) {
-                              setY1Text(String(value));
-                            } else {
-                              setY1Text(String(calibration.y.value1));
-                            }
-                          }} />
-                        <View style={[
-                          {
-                            flexDirection: 'row',
-                            alignItems: 'center',
-                            backgroundColor: "#efefef",
-                            borderRadius: 10,
-                            paddingHorizontal: 4
-                          }
-                        ]
-                        }>
-                          <Text>Origin as Y0</Text>
-                          <Switch
-                            value={calibration.y.p0 === null}
-                            onValueChange={() => {
-                              const prevCalibrationPoint = calibration.y;
-                              let newCalibrationPoint;
-
-                              if (calibration.y.p0 === null) {
-                                newCalibrationPoint = {
-                                  ...prevCalibrationPoint,
-                                  p0: (calibration.origin.y + calibration.y.p1) / 2
-                                };
-                              } else {
-                                newCalibrationPoint = {
-                                  ...prevCalibrationPoint,
-                                  p0: null
-                                };
-                                if (mode === 'y0') { setMode('origin') }
-                              }
-                              setCalibration(prev => ({
-                                ...prev,
-                                y: newCalibrationPoint,
-                              }));
-                            }
-                            }
-                          />
-                        </View>
-                      </View>
-
-                      <Text>Nudge:</Text>
-                      <View style={styles.calibrationRow}>
-                        <View style={[
-                          styles.calibrationCell,
-                        ]}
-                        >
-                          <IconButton
-                            label="[Origin]"
-                            onPress={() => setMode('origin')}
-                            selected={mode === 'origin'}
-                          />
-                          {!calibratedState && (
-                            <View style={[
-                              styles.statusBarIndicator,
-                              { justifyContent: 'center' }
-                            ]}>
-                              <AppIcon
-                                name={"alert"}
-                                size={14}
-                                colour={'#d65910'}
-                              />
-                              <Text style={{ color: '#d65910' }}>
-                                (Default)
-                              </Text>
-                            </View>
-                          )}
-                        </View>
-                        <View style={[
-                          styles.calibrationCell,
-                        ]}>
-                          <IconButton
-                            label="[X0]"
-                            onPress={() => {
-                              if (calibration.x.p0 !== null) {
-                                setMode('x0')
-                              }
-                            }}
-                            selected={mode === 'x0'}
-                            disabled={calibration.x.p0 === null}
-                          />
-                        </View>
-                        <View style={[
-                          styles.calibrationCell,
-                        ]}>
-                          <IconButton
-                            label="[X1]"
-                            onPress={() => setMode('x1')}
-                            selected={mode === 'x1'}
-                          />
-                        </View>
-                        <View style={[
-                          styles.calibrationCell,
-                        ]}>
-                          <IconButton
-                            label="[Y0]"
-                            onPress={() => {
-                              if (calibration.y.p0 !== null) {
-                                setMode('y0')
-                              }
-                            }}
-                            selected={mode === 'y0'}
-                            disabled={calibration.y.p0 === null}
-                          />
-                        </View>
-                        <View style={[
-                          styles.calibrationCell,
-                        ]}>
-                          <IconButton
-                            label="[Y1]"
-                            onPress={() => setMode('y1')}
-                            selected={mode === 'y1'}
-                          />
-                        </View>
-                      </View>
-
-                      <View style={styles.pointControls}>
-                        <IconButton
-                          icon="nudgeLeft"
-                          onPress={() => nudgeCalibrationPoint(mode, -1 / zoomDisplay, 0)}
-                          disabled={mode[0] === 'y'}
-                        />
-                        <IconButton
-                          icon="nudgeRight"
-                          onPress={() => nudgeCalibrationPoint(mode, 1 / zoomDisplay, 0)}
-                          disabled={mode[0] === 'y'}
-                        />
-                        <IconButton
-                          icon="nudgeUp"
-                          onPress={() => nudgeCalibrationPoint(mode, 0, -1 / zoomDisplay)}
-                          disabled={mode[0] === 'x'}
-                        />
-                        <IconButton
-                          icon="nudgeDown"
-                          onPress={() => nudgeCalibrationPoint(mode, 0, 1 / zoomDisplay)}
-                          disabled={mode[0] === 'x'}
-                        />
-                      </View>
-
-                    </View>
-                  </ScrollView>
+                  <CalibrationTab
+                    updateCalibrationValue={updateCalibrationValue}
+                    calibration={calibration}
+                    setCalibration={setCalibration}
+                    mode={mode}
+                    setMode={setMode}
+                    calibratedState={calibratedState}
+                    setCalibrationState={setCalibratedState}
+                    nudgeCalibrationPoint={nudgeCalibrationPoint}
+                    zoomDisplay={zoomDisplay}
+                  />
                 )}
 
               </View>
