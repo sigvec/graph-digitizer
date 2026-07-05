@@ -56,15 +56,6 @@ function transformAxis(
 
     switch (scaleType) {
 
-        case AxisScale.LINEAR:
-            return transformLinear(
-                p,
-                p0,
-                p1,
-                value0,
-                value1
-            );
-
         case AxisScale.LOG:
             return transformLog(
                 p,
@@ -74,8 +65,15 @@ function transformAxis(
                 value1
             );
 
+        case AxisScale.LINEAR:
         default:
-            return null;
+            return transformLinear(
+                p,
+                p0,
+                p1,
+                value0,
+                value1
+            );
     }
 }
 

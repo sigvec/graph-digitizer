@@ -1,29 +1,21 @@
-import React, { useState, useMemo, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Image,
   StyleSheet,
   Text,
-  TextInput,
   Platform,
   ScrollView,
   TouchableOpacity,
-  Modal,
   Alert,
   Switch,
 } from "react-native";
 
 import {
   GestureHandlerRootView,
-  Gesture,
-  GestureDetector,
 } from "react-native-gesture-handler";
 
-import Animated, {
-  useSharedValue,
-  useAnimatedStyle,
-  runOnJS,
-} from "react-native-reanimated";
+import { useSharedValue } from "react-native-reanimated";
 
 import formatTimestamp from "../utils/timestamp";
 
@@ -39,11 +31,12 @@ import TabButton from '../components/TabButton';
 
 import { generateSimpleCSV } from '../export/csv'
 import { transformPoint } from '../calibration/transform'
+import { linearRegression, computeR2 } from '../analysis/regression'
+import { formatRegressionEquation } from '../analysis/equationFormatter'
+import { prepareRegressionPoints } from "../analysis/prepareRegressionPoints";
 
 import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
-
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -67,7 +60,7 @@ import { TextInputModal, ProjectMenuModal, ColourPickerModal } from '../componen
 
 import Constants from "expo-constants";
 
-const APP_VERSION = Constants.expoConfig?.version ?? "0.2.0";
+const APP_VERSION = Constants.expoConfig?.version ?? "0.2.1";
 
 export default function MainScreen({ onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
 
@@ -172,10 +165,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     .map(p => transformPoint(p, calibration))
     .filter(Boolean);
 
-  const linearFit = linearRegression(transformedActive);
+  const regressionInput = prepareRegressionPoints(transformedActive, calibration);
+
+  const linearFit = linearRegression(regressionInput);
 
   const linearR2 = linearFit
-    ? computeR2(transformedActive, x => linearFit.a * x + linearFit.b)
+    ? computeR2(regressionInput, x => linearFit.slope * x + linearFit.intercept)
     : null;
 
   const stats = computeStats(activeDataset?.points || []);
@@ -892,6 +887,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       }));
     }
 
+    setCalibratedState(true)
     setDirty(true)
     commitHistorySnapshot(snapshotString);
   }
@@ -1128,54 +1124,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     return true;
   }
 
-  //
-  // Regression
-  // --------------------------------------------------
-
-  function linearRegression(points) {
-    if (points.length < 2) return null;
-
-    let n = points.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
-
-    points.forEach(p => {
-      sumX += p.x;
-      sumY += p.y;
-      sumXY += p.x * p.y;
-      sumXX += p.x * p.x;
-    });
-
-    const denom = n * sumXX - sumX * sumX;
-    if (denom === 0) return null;
-
-    const a = (n * sumXY - sumX * sumY) / denom;
-    const b = (sumY - a * sumX) / n;
-
-    return { a, b };
-  }
-
-
-  function computeR2(points, predict) {
-    if (points.length < 2) return null;
-
-    const meanY =
-      points.reduce((sum, p) => sum + p.y, 0) / points.length;
-
-    let ssTot = 0;
-    let ssRes = 0;
-
-    points.forEach(p => {
-      const yHat = predict(p.x);
-      ssTot += (p.y - meanY) ** 2;
-      ssRes += (p.y - yHat) ** 2;
-    });
-
-    if (ssTot === 0) return null;
-
-    return 1 - ssRes / ssTot;
-  }
-
-
   function computeStats(points) {
     if (!points.length) return null;
 
@@ -1192,7 +1140,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       maxY: Math.max(...ys),
     };
   }
-
 
   //
   // UI
@@ -2145,12 +2092,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                         {stats && (
                           <Text>
-                            X range: {stats.minX.toFixed(2)} – {stats.maxX.toFixed(2)}
+                            X range: {stats.minX.toFixed(2)} to {stats.maxX.toFixed(2)}
                           </Text>
                         )}
                         {stats && (
                           <Text>
-                            Y range: {stats.minY.toFixed(2)} – {stats.maxY.toFixed(2)}
+                            Y range: {stats.minY.toFixed(2)} to {stats.maxY.toFixed(2)}
                           </Text>
                         )}
 
@@ -2173,7 +2120,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                         {linearFit && (
                           <Text>
-                            Linear fit: y = {linearFit.a.toFixed(3)}x + {linearFit.b.toFixed(3)}
+                            Fit: {formatRegressionEquation(linearFit, calibration)}
                             {linearR2 != null ? `  (R² = ${linearR2.toFixed(4)})` : ""}
                           </Text>
                         )}
