@@ -1,6 +1,8 @@
+import type { Point } from '../types/geometry'
+import type { Calibration } from '../calibration/types';
 import { AxisScale } from './constants'
 
-export function transformPoint(point, calibration) {
+export function transformPoint(point: Point, calibration: Calibration): Point | null {
 
     const { origin, x, y } = calibration;
 
@@ -37,17 +39,15 @@ export function transformPoint(point, calibration) {
 }
 
 function transformAxis(
-    p,
-    p0,
-    p1,
-    value0,
-    value1,
-    scaleType,
-) {
+    p: number,
+    p0: number,
+    p1: number,
+    value0: number,
+    value1: number,
+    scaleType: AxisScale,
+): number | null {
 
     if (
-        p0 == null ||
-        p1 == null ||
         !Number.isFinite(value0) ||
         !Number.isFinite(value1)
     ) {
@@ -78,12 +78,12 @@ function transformAxis(
 }
 
 function transformLinear(
-    p,
-    p0,
-    p1,
-    value0,
-    value1,
-) {
+    p: number,
+    p0: number,
+    p1: number,
+    value0: number,
+    value1: number,
+): number | null {
 
     if (p0 === p1) {
         return null;
@@ -97,12 +97,12 @@ function transformLinear(
 }
 
 function transformLog(
-    p,
-    p0,
-    p1,
-    value0,
-    value1,
-) {
+    p: number,
+    p0: number,
+    p1: number,
+    value0: number,
+    value1: number,
+): number | null {
 
     if (p0 === p1) {
         return null;
@@ -116,10 +116,10 @@ function transformLog(
         (p - p0) /
         (p1 - p0);
 
-    const logValue =
-        Math.log10(value0) +
-        fraction *
-        (Math.log10(value1) - Math.log10(value0));
+    const logV0 = Math.log10(value0);
+    const logV1 = Math.log10(value1);
+
+    const logValue = logV0 + fraction * (logV1 - logV0);
 
     return 10 ** logValue;
 }
