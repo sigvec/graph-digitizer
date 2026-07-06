@@ -96,20 +96,13 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [mode, setMode] = useState("points");
   const [calibration, setCalibration] = useState(DEFAULT_CALIBRATION);
   const [calibratedState, setCalibratedState] = useState(false);
-  const [isDefaultCalibration, setIsDefaultCalibration] = useState(true);
   const [renameDatasetVisible, setRenameDatasetVisible] = useState(false);
   const [renameText, setRenameText] = useState('');
   const [renameProjectVisible, setRenameProjectVisible] = useState(false);
   const [saveAsVisible, setSaveAsVisible] = useState(false);
   const [workspaceTab, setWorkspaceTab] = useState('edit');
-  const [x0Text, setX0Text] = useState(String(0));
-  const [x1Text, setX1Text] = useState(String(LOGICAL_WIDTH));
-  const [y0Text, setY0Text] = useState(String(0));
-  const [y1Text, setY1Text] = useState(String(LOGICAL_HEIGHT));
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [exportMode, setExportMode] = useState("raw");
-  const [interpStep, setInterpStep] = useState("1");
   const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
 
   // ==================================================
@@ -214,10 +207,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     }
     setCalibration(hydratedCalibration);
     setCalibratedState(hydrated.calibratedState ?? true);
-    setX0Text(String(hydratedCalibration.x.value0));
-    setX1Text(String(hydratedCalibration.x.value1));
-    setY0Text(String(hydratedCalibration.y.value0));
-    setY1Text(String(hydratedCalibration.y.value1));
 
     setDatasets(hydrated.datasets);
     setActiveDatasetId(hydrated.datasets?.[0]?.id || null);
@@ -323,11 +312,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setCalibration(
       DEFAULT_CALIBRATION
     );
-
-    setX0Text(String(calibration.x.value0));
-    setX1Text(String(calibration.x.value1));
-    setY0Text(String(calibration.y.value0));
-    setY1Text(String(calibration.y.value1));
 
     setCalibratedState(false);
 
@@ -1314,14 +1298,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   calibration={calibration}
                   currentMode={mode}
 
-                  activeDataset={activeDataset}
                   activeDatasetId={activeDatasetId}
                   selectedPointRef={selectedPointRef}
                   setSelectedPointRef={setSelectedPointRef}
                   finishDragTransaction={finishDragTransaction}
                   finishCalibrationDragTransaction={finishCalibrationDragTransaction}
                   addPoint={addPoint}
-                  setPointPosition={setPointPosition}
 
                   scale={scale}
                   translateX={translateX}
@@ -1334,7 +1316,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                   displaySize={displaySize}
                   imageHeight={imageHeight}
-                  viewportSize={viewportSize}
                   setViewportSize={setViewportSize}
                   imageWidth={imageWidth}
 
@@ -2165,7 +2146,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     mode={mode}
                     setMode={setMode}
                     calibratedState={calibratedState}
-                    setCalibrationState={setCalibratedState}
+                    setDirty={setDirty}
                     nudgeCalibrationPoint={nudgeCalibrationPoint}
                     zoomDisplay={zoomDisplay}
                   />

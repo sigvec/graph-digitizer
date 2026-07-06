@@ -19,7 +19,7 @@ import Animated, {
     useAnimatedProps,
 } from 'react-native-reanimated';
 
-import Svg, { Line, Path } from 'react-native-svg';
+import Svg, { Path } from 'react-native-svg';
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 
@@ -28,9 +28,10 @@ import {
     LOGICAL_HEIGHT,
 } from '../constants/geometry';
 
+import { Axis } from '../calibration/constants'
+
 import AppIcon from './AppIcon'
 
-const AnimatedLine = Animated.createAnimatedComponent(Line);
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 function generateSpline(points, segments = 20) {
@@ -189,7 +190,7 @@ function DraggableCalibrationPoint({
         height: 2 * (RADIUS),
         borderRadius: (RADIUS),
         backgroundColor: colour,
-        zIndex: 1,
+        zIndex: 2,
     }
 
     const outerRing = {
@@ -200,7 +201,18 @@ function DraggableCalibrationPoint({
         borderWidth: 15,
         backgroundColor: "#00000000",
         borderColor: 'white',
-        zIndex: 2,
+        zIndex: 3,
+    }
+
+    const boundaryRing = {
+        position: "absolute",
+        width: 2.2 * (RADIUS),
+        height: 2.2 * (RADIUS),
+        borderRadius: 1.5 * (RADIUS),
+        borderWidth: 35,
+        backgroundColor: "black",
+        borderColor: 'black',
+        zIndex: 1,
     }
 
     const animatedProps = useAnimatedStyle(() => {
@@ -242,73 +254,114 @@ function DraggableCalibrationPoint({
                 <View style={[
                     coreDot,
                 ]} />
-                {mode !== 'points' && <View style={[
-                    outerRing,
-                ]} />}
+                {mode !== 'points' &&
+                    <>
+                        <View style={[
+                            outerRing,
+                        ]} />
+                        <View style={[
+                            boundaryRing,
+                        ]} />
+                    </>
+                }
             </Animated.View>
         </GestureDetector>
     );
 }
 
-function AnimatedCalibrationPath({
-    calibrationPoints,
+function AnimatedCalibrationAxis({
+    sharedCalibrationPoints,
+    calibrationAxis,
+    mode,
+    colour,
+    scale,
     imageWidth,
     imageHeight,
-    scale
+    onDragComplete,
 }) {
 
-    if (!calibrationPoints) {
+    if (!sharedCalibrationPoints) {
         return { d: '' };
     }
 
-    const animatedProps1 = useAnimatedProps(() => {
-        const c = calibrationPoints.value;
-        const points = (
-            [
-                { x: c.origin.x, y: 0 },
-                { x: c.origin.x, y: LOGICAL_HEIGHT }
-            ]
-        );
+    const calibrationEnabled = mode !== 'points';
 
-        const d = pointsToPath(points, imageWidth, imageHeight, 'linear');
+    const contextX = useSharedValue(0);
+    const contextY = useSharedValue(0);
+
+    const SLOP = 5;
+
+    const calibrationPoint = 'origin'
+
+    const panGesture = Gesture.Pan()
+        .enabled(calibrationEnabled)
+        .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
+        .onStart(() => {
+            contextX.value = sharedCalibrationPoints.value[calibrationPoint].x;
+            contextY.value = sharedCalibrationPoints.value[calibrationPoint].y;
+        })
+        .onUpdate((event) => {
+            const c = {
+                ...sharedCalibrationPoints.value,
+            };
+
+            if (calibrationAxis === Axis.X) {
+                const translateY = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
+                c[calibrationPoint] = {
+                    ...c[calibrationPoint],
+                    y: translateY
+                };
+            } else {
+                const translateX = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
+                c[calibrationPoint] = {
+                    ...c[calibrationPoint],
+                    x: translateX
+                };
+            }
+
+            sharedCalibrationPoints.value = c;
+
+        })
+        .onEnd(() => {
+            runOnJS(onDragComplete)(calibrationPoint, sharedCalibrationPoints.value[calibrationPoint].x, sharedCalibrationPoints.value[calibrationPoint].y);
+        });
+
+    const animatedStyleContainer = useAnimatedStyle(() => {
+
+        const strokeWidth = 4 / scale.value;
+        const c = sharedCalibrationPoints.value;
+        const X0 = calibrationAxis === 'X' ? 0 : c[calibrationPoint].x * imageWidth / LOGICAL_WIDTH - 2 * strokeWidth;
+        const X1 = calibrationAxis === 'X' ? imageWidth : c[calibrationPoint].x * imageWidth / LOGICAL_WIDTH + 2 * strokeWidth;
+        const Y0 = calibrationAxis === 'X' ? c[calibrationPoint].y * imageHeight / LOGICAL_HEIGHT - 2 * strokeWidth : 0;
+        const Y1 = calibrationAxis === 'X' ? c[calibrationPoint].y * imageHeight / LOGICAL_HEIGHT + 2 * strokeWidth : imageHeight;
 
         return {
-            strokeWidth: 3 / scale.value,
-            d: d
+            position: "absolute",
+            left: X0,
+            top: Y0,
+            width: X1 - X0,
+            height: Y1 - Y0,
+            backgroundColor: '#00000000'
         };
     });
 
-    const animatedProps2 = useAnimatedProps(() => {
-        const c = calibrationPoints.value;
-        const points = (
-            [
-                { x: 0, y: c.origin.y },
-                { x: LOGICAL_WIDTH, y: c.origin.y }
-            ]
-        );
-
-        const d = pointsToPath(points, imageWidth, imageHeight, 'linear');
-
-        return {
-            strokeWidth: 3 / scale.value,
-            d: d
-        };
-    });
+    const lineStyle = {
+        position: "absolute",
+        left: calibrationAxis === 'X' ? "0%" : "37.5%",
+        top: calibrationAxis === 'X' ? "37.5%" : "0%",
+        width: calibrationAxis === 'X' ? "100%" : "25%",
+        height: calibrationAxis === 'X' ? "25%" : "100%",
+        backgroundColor: colour
+    };
 
     return (
-        <>
-            <AnimatedPath
-                animatedProps={animatedProps1}
-                stroke={"orange"}
-                fill="none"
-            />
-            <AnimatedPath
-                animatedProps={animatedProps2}
-                stroke={"green"}
-                fill="none"
-            />
-        </>
+        <GestureDetector gesture={panGesture}>
+            <Animated.View style={animatedStyleContainer}>
+                <View style={lineStyle} />
+            </Animated.View>
+        </GestureDetector>
     );
+
 }
 
 function DraggablePoint({
@@ -542,14 +595,12 @@ export default function GraphCanvas(props) {
         calibration,
         currentMode,
 
-        activeDataset,
         activeDatasetId,
         selectedPointRef,
         setSelectedPointRef,
         finishDragTransaction,
         finishCalibrationDragTransaction,
         addPoint,
-        setPointPosition,
 
         scale,
         translateX,
@@ -561,7 +612,6 @@ export default function GraphCanvas(props) {
         displaySize,
         imageWidth,
         imageHeight,
-        viewportSize,
         setViewportSize,
 
         setZoomDisplay,
@@ -698,8 +748,7 @@ export default function GraphCanvas(props) {
         <View
             style={styles.canvasViewport}
             onLayout={e => {
-                const { width, height } =
-                    e.nativeEvent.layout;
+                const { width, height } = e.nativeEvent.layout;
 
                 setViewportSize({ width: width, height: height });
             }}
@@ -769,19 +818,27 @@ export default function GraphCanvas(props) {
                                     ]
                                 } />
 
-                                <Svg
-                                    style={[
-                                        StyleSheet.absoluteFill
-                                    ]}
-                                >
-                                    <AnimatedCalibrationPath
-                                        calibrationPoints={sharedCalibrationPoints}
-                                        imageWidth={imageWidth}
-                                        imageHeight={imageHeight}
-                                        scale={scale}
-                                    />
+                                <AnimatedCalibrationAxis
+                                    sharedCalibrationPoints={sharedCalibrationPoints}
+                                    calibrationAxis={'X'}
+                                    mode={currentMode}
+                                    colour={'green'}
+                                    scale={scale}
+                                    imageWidth={imageWidth}
+                                    imageHeight={imageHeight}
+                                    onDragComplete={finishCalibrationDragTransaction}
+                                />
 
-                                </Svg>
+                                <AnimatedCalibrationAxis
+                                    sharedCalibrationPoints={sharedCalibrationPoints}
+                                    calibrationAxis={'Y'}
+                                    mode={currentMode}
+                                    colour={'orange'}
+                                    scale={scale}
+                                    imageWidth={imageWidth}
+                                    imageHeight={imageHeight}
+                                    onDragComplete={finishCalibrationDragTransaction}
+                                />
 
                                 <DraggableCalibrationPoint
                                     calibrationType={'origin'}
