@@ -29,13 +29,11 @@ import { DatasetActionButton } from '../components/IconButton';
 import MenuButton from '../components/MenuButton';
 import TabButton from '../components/TabButton';
 
-import { generateSimpleCSV } from '../export/csv'
 import { transformPoint } from '../calibration/transform'
 import { linearRegression, computeR2 } from '../analysis/regression'
-import { formatRegressionEquation } from '../analysis/equationFormatter'
 import { prepareRegressionPoints } from "../analysis/prepareRegressionPoints";
+import { getRegressionPredictor } from "../calibration/transform";
 
-import * as Clipboard from "expo-clipboard";
 import * as ImagePicker from "expo-image-picker";
 
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -48,6 +46,7 @@ import { hydrateProject } from '../utils/projectTransform';
 
 import GraphCanvas from '../components/GraphCanvas';
 import CalibrationTab from '../components/Tabs/CalibrationTab';
+import AnalysisTab from '../components/Tabs/AnalysisTab';
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 import {
@@ -104,6 +103,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
+  const [showRegressionLine, setShowRegressionLine] = useState(false);
 
   // ==================================================
   // Refs / Shared Values
@@ -162,8 +162,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
   const linearFit = linearRegression(regressionInput);
 
+  const predictor = getRegressionPredictor(linearFit, calibration)
   const linearR2 = linearFit
-    ? computeR2(regressionInput, x => linearFit.slope * x + linearFit.intercept)
+    ? computeR2(transformedActive, predictor)
     : null;
 
   const stats = computeStats(activeDataset?.points || []);
@@ -248,6 +249,8 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       hydrated.datasets?.[0]?.id ||
       null
     );
+
+    setShowRegressionLine(ui.showRegressionLine || false)
 
     const snapshot = {
       datasets: hydrated.datasets,
@@ -481,6 +484,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         translateY: translateY.value,
 
         activeDatasetId,
+        showRegressionLine,
 
       },
     };
@@ -911,8 +915,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     const hit = findPointNear(x, y);
 
     if (hit) {
-      const selectedDataset = datasets.find(d => d.id === hit.datasetId);
-
       setSelectedPointRef(hit);
       setActiveDatasetId(hit.datasetId);
 
@@ -1300,6 +1302,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                   activeDatasetId={activeDatasetId}
                   selectedPointRef={selectedPointRef}
+                  transformedActive={transformedActive}
+                  regression={linearFit}
+                  showRegressionLine={showRegressionLine}
                   setSelectedPointRef={setSelectedPointRef}
                   finishDragTransaction={finishDragTransaction}
                   finishCalibrationDragTransaction={finishCalibrationDragTransaction}
@@ -1554,12 +1559,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     active={workspaceTab === 'calibrate'}
                   />
                   <TabButton
-                    label="Analyse"
+                    label="Analysis"
                     onPress={() => {
-                      setWorkspaceTab('analyse')
+                      setWorkspaceTab('analysis')
                       setMode('points')
                     }}
-                    active={workspaceTab === 'analyse'}
+                    active={workspaceTab === 'analysis'}
                   />
                   <TabButton
                     label="Project"
@@ -1665,7 +1670,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                       contentContainerStyle={{
                         paddingVertical: 1,
                       }}
-                      vertical>
+                    >
 
                       {datasets.map(d => {
                         const isActive = d.id === activeDatasetId;
@@ -2020,122 +2025,19 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   </View>
                 )}
 
-                {workspaceTab === 'analyse' && (
-                  <ScrollView
-                    style={styles.workspaceToolbarContainer}
-                    vertical
-                  >
-                    <View style={styles.workspaceToolBackground}>
-                      <View>
-
-                        <View style={styles.datasetInfo}>
-                          <Text style={[
-                            {
-                              marginRight: 15
-                            },
-                          ]
-                          }>
-                            Selected:
-                          </Text>
-                          <View
-                            style={[
-
-                              {
-                                width: 10,
-                                height: 10,
-                                borderRadius: 5,
-                                marginRight: 8,
-                                backgroundColor: activeDataset.colour,
-                              },
-                            ]}
-                          />
-
-                          <Text
-                            numberOfLines={1}
-                            ellipsizeMode="tail"
-                            style={[
-                              {
-                                ...TYPOGRAPHY.title,
-                                color: COLOURS.text,
-                                flexShrink: 1,
-                              },
-                            ]
-                            }>
-                            {activeDataset?.name || 'None'}
-                          </Text>
-
-                        </View>
-                        {stats && (
-                          <Text>
-                            Points: {stats.count}
-                          </Text>
-                        )}
-
-                        {stats && (
-                          <Text>
-                            X range: {stats.minX.toFixed(2)} to {stats.maxX.toFixed(2)}
-                          </Text>
-                        )}
-                        {stats && (
-                          <Text>
-                            Y range: {stats.minY.toFixed(2)} to {stats.maxY.toFixed(2)}
-                          </Text>
-                        )}
-
-
-                        {(!calibratedState) && (
-                          <View style={[
-                            styles.statusBarIndicator,
-                            { justifyContent: 'left' }
-                          ]}>
-                            <AppIcon
-                              name={"alert"}
-                              size={14}
-                              colour={'#d65910'}
-                            />
-                            <Text style={{ color: '#d65910' }}>
-                              (Calibration not set)
-                            </Text>
-                          </View>
-                        )}
-
-                        {linearFit && (
-                          <Text>
-                            Fit: {formatRegressionEquation(linearFit, calibration)}
-                            {linearR2 != null ? `  (R² = ${linearR2.toFixed(4)})` : ""}
-                          </Text>
-                        )}
-
-                      </View>
-
-                      <View style={styles.controls}>
-                        <IconButton
-                          label="Export selected to CSV"
-                          onPress={async () => {
-                            if (!calibratedState) {
-                              alert("Calibration incomplete");
-                              return;
-                            }
-                            const csv = generateSimpleCSV([activeDataset], calibration);
-                            await Clipboard.setStringAsync(csv);
-                            alert("Copied!");
-                          }}
-                        />
-                        <IconButton
-                          label="Export all to CSV"
-                          onPress={async () => {
-                            if (!calibratedState) {
-                              alert("Calibration incomplete");
-                              return;
-                            }
-                            const csv = generateSimpleCSV(datasets, calibration);
-                            await Clipboard.setStringAsync(csv);
-                            alert("Copied!");
-                          }}
-                        />
-                      </View>
-                    </View>
-                  </ScrollView>
+                {workspaceTab === 'analysis' && (
+                  <AnalysisTab
+                    datasets={datasets}
+                    activeDataset={activeDataset}
+                    stats={stats}
+                    linearFit={linearFit}
+                    linearR2={linearR2}
+                    calibration={calibration}
+                    calibratedState={calibratedState}
+                    showRegressionLine={showRegressionLine}
+                    setShowRegressionLine={setShowRegressionLine}
+                    setDirty={setDirty}
+                  />
                 )}
 
                 {workspaceTab === 'calibrate' && (
@@ -2314,7 +2216,6 @@ const styles = StyleSheet.create({
 
   workspaceToolBackground: {
     flex: 1,
-    alignItems: 'start',
     paddingHorizontal: SPACING.sm,
     paddingVertical: SPACING.sm,
     backgroundColor: COLOURS.surface,

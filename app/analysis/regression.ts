@@ -1,11 +1,5 @@
-import { Point } from '../types/geometry'
-
-export interface LinearRegressionResult {
-    slope: number;
-    intercept: number;
-}
-
-type Predictor = (x: number) => number;
+import type { Point } from '../types/geometry'
+import type { LinearRegressionResult, Predictor } from './types';
 
 export function linearRegression(points: Point[]): LinearRegressionResult | null {
     if (points.length < 2) return null;

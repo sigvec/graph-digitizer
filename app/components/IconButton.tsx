@@ -1,4 +1,7 @@
+import type { ReactNode } from "react";
 import {
+    StyleProp,
+    ViewStyle,
     Pressable,
     StyleSheet,
     Text,
@@ -9,15 +12,25 @@ import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 
 import AppIcon from './AppIcon'
 
+interface IconButtonProps {
+    icon?: ReactNode;
+    label?: string;
+    onPress: () => void;
+    selected?: boolean;
+    alert?: boolean;
+    disabled?: boolean;
+    style?: StyleProp<ViewStyle>;
+}
+
 export default function IconButton({
-    icon,
+    icon = null,
     label,
     onPress,
     selected = false,
     alert = false,
     disabled = false,
-    style
-}) {
+    style = null
+}: IconButtonProps) {
 
     const iconColour =
         disabled
@@ -77,15 +90,16 @@ export default function IconButton({
 }
 
 
-export function DatasetActionButton(props) {
-
+export function DatasetActionButton({
+    style,
+    ...props
+}: IconButtonProps) {
     return (
         <IconButton
             {...props}
-            style={styles.datasetButton}
+            style={[styles.datasetButton, style]}
         />
     );
-
 }
 
 const styles = StyleSheet.create({

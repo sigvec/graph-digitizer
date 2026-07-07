@@ -1,6 +1,6 @@
 import { AxisScale } from '../calibration/constants';
 import { Calibration } from '../calibration/types';
-import { LinearRegressionResult } from './regression';
+import { LinearRegressionResult } from './types';
 
 const SUPERSCRIPT: Record<string, string> = {
     "0": "⁰",
