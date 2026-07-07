@@ -70,10 +70,17 @@ Define graph axes and reference points for coordinate conversion.
   <img src="screenshots/calibration.png" width="350">
 </p>
 
+### Analysis
+
+Best-fit curve with equation and statistics.
+
+<p align="center">
+  <img src="screenshots/analysis.png" width="350">
+</p>
 
 ## Status
 
-Version 0.2.0
+Version 0.2.1
 
 ## License
 

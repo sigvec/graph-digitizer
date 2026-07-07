@@ -31,6 +31,7 @@ import {
 import { Axis } from '../calibration/constants'
 
 import AppIcon from './AppIcon'
+import { RegressionLine } from './RegressionLine';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
@@ -597,6 +598,9 @@ export default function GraphCanvas(props) {
 
         activeDatasetId,
         selectedPointRef,
+        transformedActive,
+        regression,
+        showRegressionLine,
         setSelectedPointRef,
         finishDragTransaction,
         finishCalibrationDragTransaction,
@@ -898,6 +902,23 @@ export default function GraphCanvas(props) {
                                     sharedCalibrationPoints={sharedCalibrationPoints}
                                     onDragComplete={finishCalibrationDragTransaction}
                                 />
+
+                                {showRegressionLine && <Svg
+                                    style={[
+                                        StyleSheet.absoluteFill
+                                    ]}
+                                >
+                                    <RegressionLine
+                                        points={transformedActive}
+                                        regression={regression}
+                                        calibration={calibration}
+                                        imageWidth={imageWidth}
+                                        imageHeight={imageHeight}
+                                        colour={"gray"}
+                                        scale={scale}
+                                    />
+                                </Svg>
+                                }
 
                                 {datasets
                                     .map((d, datasetIndex) => {
