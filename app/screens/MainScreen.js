@@ -41,7 +41,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { generateId } from '../utils/id';
 
 import storage from '../../frontend/services/storage';
-
+import { loadAllProjects } from "../../frontend/services/storage/localStorage";
+import { copyToLocal, removeOrphanedImages } from "../../frontend/services/storage/imageStorage";
 import { hydrateProject } from '../utils/projectTransform';
 
 import GraphCanvas from '../components/GraphCanvas';
@@ -59,7 +60,8 @@ import { TextInputModal, ProjectMenuModal, ColourPickerModal } from '../componen
 
 import Constants from "expo-constants";
 
-const APP_VERSION = Constants.expoConfig?.version ?? "0.2.1";
+const APP_VERSION = Constants.expoConfig?.version ?? "0.3.0";
+const PROJECT_FORMAT_VERSION = 1;
 
 export default function MainScreen({ onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
 
@@ -105,11 +107,14 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
   const [showRegressionLine, setShowRegressionLine] = useState(false);
 
+  const [storageReady, setStorageReady] = useState(false);
+
+  const [isRestoringHistory, setIsRestoringHistory] = useState(false);
+  const [isRestoringImage, setIsRestoringImage] = useState(false);
   // ==================================================
   // Refs / Shared Values
   // ==================================================
 
-  const isRestoringHistory = useRef(false);
   const scale = useSharedValue(1);
   const translateX = useSharedValue(0);
   const translateY = useSharedValue(0);
@@ -173,11 +178,27 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   // Effects
   // ==================================================
 
+  useEffect(() => {
+
+    async function initializeStorage() {
+      try {
+        const projects = await loadAllProjects()
+        await removeOrphanedImages(projects);
+      } catch (error) {
+        console.error("Image cleanup failed:", error);
+      }
+
+      setStorageReady(true);
+
+    }
+
+    void initializeStorage();
+  }, []);
 
   useEffect(() => {
     if (!loadedProject) return;
 
-    isRestoringHistory.current = true;
+    setIsRestoringHistory(true);
 
     const hydrated = hydrateProject(loadedProject);
 
@@ -215,27 +236,11 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     const ui = hydrated.uiState || {};
 
     scale.value = ui.scale || 1;
-    translateX.value = ui.translateX || 0;
-    translateY.value = ui.translateY || 0;
-
-    const imageUri = hydrated.image;
-    setImage(imageUri);
-    setImageWidth(null);
-    setImageHeight(null);
     setZoomDisplay(1);
+    const imageUri = hydrated.image;
 
-    Image.getSize(imageUri, (width, height) => {
-
-      setImageWidth(width);
-      setImageHeight(height);
-
-      const fitScale = Math.min(
-        displaySize.width / width,
-        displaySize.height / height
-      );
-
-      setZoomDisplay(ui.scale / fitScale || 1);
-    });
+    setIsRestoringImage(true)
+    setProjectImage(imageUri, ui.scale, ui.translateX, ui.translateY);
 
     const loadedMode = ui.mode || 'points'
     setMode(loadedMode);
@@ -254,16 +259,14 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     const snapshot = {
       datasets: hydrated.datasets,
-      calibration: hydrated.calibration,
+      calibration: hydratedCalibration,
       image: hydrated.image,
     };
 
     setHistory([JSON.stringify(snapshot)]);
     setHistoryIndex(0);
 
-    requestAnimationFrame(() => {
-      isRestoringHistory.current = false;
-    });
+    setIsRestoringHistory(false);
 
     setLoadedProject(null)
 
@@ -274,7 +277,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
   useEffect(() => {
 
-    if (isRestoringHistory.current) {
+    if (isRestoringHistory || isRestoringImage) {
       return;
     }
 
@@ -303,7 +306,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     const newDataset = createEmptyDataset(0)
     const newDatasetId = newDataset.id
-    setImage(null);
+    setProjectImage(null)
 
     setDatasets([
       newDataset
@@ -323,6 +326,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setWorkspaceTab('edit')
     setMode('points')
 
+    setShowRegressionLine(false)
+
+    setHistory([]);
+    setHistoryIndex(0);
     setDirty(false);
   }
 
@@ -423,26 +430,13 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     }
   }
 
-  function confirmRenameProject() {
-
-    const name = renameText.trim();
-
-    if (!name) {
-      return;
-    }
-
-    setProjectName(name)
-    setDirty(true)
-
-    setRenameProjectVisible(false);
-  }
-
   function buildFullProjectExport(
     datasets,
     projectName,
   ) {
 
     return {
+      version: PROJECT_FORMAT_VERSION,
       name: projectName || 'Untitled Project',
       appVersion: APP_VERSION,
       device: {
@@ -490,30 +484,73 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     };
   }
 
-  const pickImage = async () => {
-    const result = await ImagePicker.launchImageLibraryAsync({});
-    if (!result.canceled) {
-      setDirty(true);
-      const imageUri = result.assets[0].uri
-
-      Image.getSize(imageUri, (width, height) => {
-
-        setImage(imageUri);
-        setImageWidth(width);
-        setImageHeight(height);
-
-        fitImage(width, height);
-      });
-
-
-      !activeDatasetId && setActiveDatasetId(
-        datasets?.[0]?.id ||
-        null
+  function getImageSize(uri) {
+    return new Promise((resolve, reject) => {
+      Image.getSize(
+        uri,
+        (width, height) => resolve({ width, height }),
+        reject
       );
+    });
+  }
 
+  async function setProjectImage(uri, scale, xTranslation, yTranslation) {
 
+    if (typeof uri !== "string" || uri.length === 0) {
+
+      setImage(null);
+      setImageWidth(null);
+      setImageHeight(null);
+      setIsRestoringImage(false);
+      return;
+    }
+
+    try {
+      const { width, height } = await getImageSize(uri);
+
+      setImageWidth(width);
+      setImageHeight(height);
+      setImage(uri);
+      fitImage(width, height, scale, xTranslation, yTranslation);
+      setIsRestoringImage(false);
+
+    } catch (error) {
+      console.warn("Failed to load image:", error);
+
+      setImage(uri);
+      setImageWidth(null);
+      setImageHeight(null);
+      setIsRestoringImage(false);
+    }
+  }
+
+  const pickImage = async () => {
+    if (!storageReady) {
+      return
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({});
+
+    if (!result.canceled) {
+      try {
+        const storedImage = await copyToLocal(result.assets[0]);
+
+        setDirty(true);
+
+        setProjectImage(storedImage.uri)
+
+        !activeDatasetId &&
+          setActiveDatasetId(datasets?.[0]?.id || null);
+      } catch (error) {
+        console.error("Failed to import image:", error);
+        Alert.alert(
+          "Import Failed",
+          "The selected image could not be imported."
+        );
+      }
     }
   };
+
   function getTabForMode(mode) {
 
     if (
@@ -552,49 +589,26 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setHistoryIndex(next.length - 1);
   }
 
-  function createSnapshot() {
-    return {
-      datasets,
-      calibration,
-      image,
-    };
-  }
-
-  function pushHistory() {
-
-    const snapshot = createSnapshot();
-
-    const nextHistory = [
-      ...history.slice(0, historyIndex + 1),
-      snapshot,
-    ];
-
-    setHistory(nextHistory);
-
-    setHistoryIndex(nextHistory.length - 1);
-  }
-
   function handleUndo() {
 
     if (historyIndex <= 0) {
       return;
     }
 
-    isRestoringHistory.current = true;
+    setIsRestoringHistory(true);
 
     const previous = JSON.parse(history[historyIndex - 1]);
 
     setDatasets(previous.datasets);
     setCalibration(previous.calibration);
-    setImage(previous.image);
+
+    setProjectImage(previous.image);
 
     setHistoryIndex(historyIndex - 1);
 
     setDirty(true)
 
-    requestAnimationFrame(() => {
-      isRestoringHistory.current = false;
-    });
+    setIsRestoringHistory(false);
   }
 
   function handleRedo() {
@@ -605,21 +619,19 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       return;
     }
 
-    isRestoringHistory.current = true;
+    setIsRestoringHistory(true);
 
     const next = JSON.parse(history[historyIndex + 1]);
 
     setDatasets(next.datasets);
     setCalibration(next.calibration);
-    setImage(next.image);
+    setProjectImage(next.image);
 
     setHistoryIndex(historyIndex + 1);
 
     setDirty(true)
 
-    requestAnimationFrame(() => {
-      isRestoringHistory.current = false;
-    });
+    setIsRestoringHistory(false);
   }
 
   //
@@ -1131,16 +1143,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   // UI
   // --------------------------------------------------
 
-  function resetView() {
-    scale.value = 1;
-    translateX.value = 0;
-    translateY.value = 0;
-
-    savedScale.value = 1;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
-  }
-
   function centreView() {
     translateX.value = 0;
     translateY.value = 0;
@@ -1159,7 +1161,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
  */
   function fitImage(
     imgWidth,
-    imgHeight
+    imgHeight,
+    newScale,
+    xTranslation,
+    yTranslation,
   ) {
 
     if (
@@ -1176,15 +1181,18 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       displaySize.height / imgHeight
     );
 
-    scale.value = fitScale;
-    translateX.value = 0;
-    translateY.value = 0;
+    const finalScale = newScale || fitScale
 
-    savedScale.value = fitScale;
-    savedTranslateX.value = 0;
-    savedTranslateY.value = 0;
+    scale.value = finalScale;
+    savedScale.value = finalScale;
 
-    setZoomDisplay(1)
+    translateX.value = xTranslation || 0;
+    translateY.value = yTranslation || 0;
+
+    savedTranslateX.value = xTranslation || 0;
+    savedTranslateY.value = yTranslation || 0;
+
+    setZoomDisplay(finalScale / fitScale)
   }
 
   function fitCurrentImage() {
@@ -1296,6 +1304,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                 <GraphCanvas
                   image={image}
                   pickImage={pickImage}
+                  storageReady={storageReady}
                   datasets={datasets}
                   calibration={calibration}
                   currentMode={mode}
@@ -1317,13 +1326,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                   savedTranslateX={savedTranslateX}
                   savedTranslateY={savedTranslateY}
 
-
-
                   displaySize={displaySize}
                   imageHeight={imageHeight}
                   setViewportSize={setViewportSize}
                   imageWidth={imageWidth}
-
 
                   setZoomDisplay={setZoomDisplay}
                 />
@@ -1450,9 +1456,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                       <Text style={styles.statusTextCoords}>X:</Text>
                     )}
 
-                    {calibration.origin ? (
-                      <Text style={styles.statusTextCoords}>Y: ({calibration.origin.y
-                        ? (100 - calibration.origin.y).toFixed(1)
+                    {calibration.xRef ? (
+                      <Text style={styles.statusTextCoords}>Y: ({calibration.xRef.y
+                        ? (100 - calibration.xRef.y).toFixed(1)
                         : 'None'}%)
                       </Text>
                     ) : (
@@ -1463,9 +1469,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
                 {mode === 'yRef' &&
                   <View style={styles.statusBarSection} >
-                    {calibration.origin ? (
-                      <Text style={styles.statusTextCoords}>X: ({calibration.origin.x
-                        ? (calibration.origin.x).toFixed(1)
+                    {calibration.yRef ? (
+                      <Text style={styles.statusTextCoords}>X: ({calibration.yRef.x
+                        ? (calibration.yRef.x).toFixed(1)
                         : 'None'}%)
                       </Text>
                     ) : (
@@ -1652,6 +1658,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                           icon="image"
                           label="Change Image"
                           onPress={pickImage}
+                          disabled={!storageReady}
                         />
                       </View>
                     </View>
@@ -2048,6 +2055,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     mode={mode}
                     setMode={setMode}
                     calibratedState={calibratedState}
+                    setCalibratedState={setCalibratedState}
                     setDirty={setDirty}
                     nudgeCalibrationPoint={nudgeCalibrationPoint}
                     zoomDisplay={zoomDisplay}

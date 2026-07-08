@@ -15,7 +15,7 @@ import {
 
 import { Point } from '../types/geometry'
 import { Calibration } from '../calibration/types'
-import { LinearRegressionResult, Predictor } from '../analysis/types'
+import { LinearRegressionResult } from '../analysis/types'
 import { CurveMode } from '../datasets/constants';
 import { getRegressionPredictor, inverseTransformPoint } from '../calibration/transform'
 
@@ -143,9 +143,7 @@ export function RegressionLine({
     scale,
 }: Props) {
 
-
-
-    if (!regression || !regression.intercept || !regression.slope) {
+    if (!regression || regression.intercept == null || regression.slope == null) {
         return null;
     }
 
@@ -160,10 +158,13 @@ export function RegressionLine({
 
         const d = pointsToPath([p0, p1], imageWidth, imageHeight, CurveMode.LINEAR);
 
+        const strokeWidth = 3 / scale.value;
+        const dash = 5 / scale.value;
+
         return {
-            strokeWidth: 3 / scale.value,
+            strokeWidth: strokeWidth,
             d: d ?? "",
-            strokeDasharray: [5 / scale.value, 5 / scale.value],
+            strokeDasharray: [dash, dash],
         };
     });
 

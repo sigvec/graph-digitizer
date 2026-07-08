@@ -592,6 +592,7 @@ export default function GraphCanvas(props) {
     const {
         image,
         pickImage,
+        storageReady,
         datasets,
         calibration,
         currentMode,
@@ -758,8 +759,12 @@ export default function GraphCanvas(props) {
             }}
         >
             {!image && (
-                <TouchableOpacity style={styles.emptyWorkspace} onPress={pickImage}>
-
+                <TouchableOpacity style={[
+                    styles.emptyWorkspace,
+                    !storageReady && { opacity: 0.3 }
+                ]
+                } onPress={pickImage}
+                >
                     <AppIcon
                         name={"add"}
                         size={48}
@@ -777,7 +782,12 @@ export default function GraphCanvas(props) {
                 </TouchableOpacity>
             )}
             {image && (!imageWidth || !imageHeight) && (
-                <TouchableOpacity style={styles.emptyWorkspace} onPress={pickImage}>
+                <TouchableOpacity style={[
+                    styles.emptyWorkspace,
+                    !storageReady && { opacity: 0.3 }
+                ]
+                } onPress={pickImage}
+                >
 
                     <AppIcon
                         name={"add"}
@@ -788,7 +798,7 @@ export default function GraphCanvas(props) {
                     <Text
                         numberOfLines={1}
                         ellipsizeMode="middle"
-                        style={styles.projectTabItemValue}
+                        style={styles.warningText}
                     >
                         Couldn't load the image file.
                     </Text>
@@ -903,7 +913,7 @@ export default function GraphCanvas(props) {
                                     onDragComplete={finishCalibrationDragTransaction}
                                 />
 
-                                {showRegressionLine && <Svg
+                                {showRegressionLine && regression && transformedActive.length >= 2 && <Svg
                                     style={[
                                         StyleSheet.absoluteFill
                                     ]}
@@ -1019,6 +1029,12 @@ const styles = StyleSheet.create({
     emptySubtitle: {
         ...TYPOGRAPHY.body,
         color: COLOURS.muted,
+        textAlign: 'center',
+    },
+
+    warningText: {
+        ...TYPOGRAPHY.body,
+        color: 'red',
         textAlign: 'center',
     },
 
