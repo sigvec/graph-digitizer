@@ -21,6 +21,7 @@ export default function CalibrationTab({
     mode,
     setMode,
     calibratedState,
+    setCalibratedState,
     setDirty,
     nudgeCalibrationPoint,
     zoomDisplay,
@@ -129,6 +130,7 @@ export default function CalibrationTab({
                                             ...prev,
                                             x: newCalibrationPoint,
                                         }));
+                                        setCalibratedState(true)
                                         setDirty(true)
                                     }
                                     }
@@ -156,6 +158,7 @@ export default function CalibrationTab({
                                             ...prev,
                                             x: newCalibrationPoint,
                                         }));
+                                        setCalibratedState(true)
                                         setDirty(true)
                                     }
                                     }
@@ -237,6 +240,7 @@ export default function CalibrationTab({
                                             ...prev,
                                             y: newCalibrationPoint,
                                         }));
+                                        setCalibratedState(true)
                                         setDirty(true)
                                     }
                                     }
@@ -264,6 +268,7 @@ export default function CalibrationTab({
                                             ...prev,
                                             y: newCalibrationPoint,
                                         }));
+                                        setCalibratedState(true)
                                         setDirty(true)
                                     }
                                     }
@@ -405,6 +410,7 @@ export default function CalibrationTab({
                 } else {
                     setX0Text(String(calibration.x.value0));
                 }
+                setCalibratedState(true)
                 setDirty(true)
                 setChangeValueX0Visible(false);
             }}
@@ -425,6 +431,7 @@ export default function CalibrationTab({
                 } else {
                     setX1Text(String(calibration.x.value1));
                 }
+                setCalibratedState(true)
                 setDirty(true)
                 setChangeValueX1Visible(false);
             }}
@@ -445,6 +452,7 @@ export default function CalibrationTab({
                 } else {
                     setY0Text(String(calibration.y.value0));
                 }
+                setCalibratedState(true)
                 setDirty(true)
                 setChangeValueY0Visible(false);
             }}
@@ -465,6 +473,7 @@ export default function CalibrationTab({
                 } else {
                     setY1Text(String(calibration.y.value1));
                 }
+                setCalibratedState(true)
                 setDirty(true)
                 setChangeValueY1Visible(false);
             }}

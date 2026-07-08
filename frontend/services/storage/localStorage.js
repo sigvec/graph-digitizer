@@ -46,7 +46,7 @@ export async function loadProject(
     return JSON.parse(json);
 }
 
-export async function listProjects() {
+export async function loadAllProjects() {
 
     const keys =
         await AsyncStorage.getAllKeys();
@@ -61,10 +61,15 @@ export async function listProjects() {
             projectKeys
         );
 
-    return projects
-        .map(([_, json]) =>
-            JSON.parse(json)
-        );
+    const result = [];
+
+    for (const [, json] of projects) {
+        if (json !== null) {
+            result.push(JSON.parse(json));
+        }
+    }
+
+    return result;
 }
 
 

@@ -15,7 +15,7 @@ export default function ProjectListScreen({
 
   async function loadProjects() {
     try {
-      const data = await storage.listProjects();
+      const data = await storage.loadAllProjects();
       setProjects(data);
     } catch (err) {
       console.error(err);
