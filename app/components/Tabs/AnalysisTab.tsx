@@ -161,7 +161,7 @@ export default function AnalysisTab({
                             }
 
                         }>
-                            <Text>Best-fit equation ({modelType}):</Text>
+                            <Text>Best-fit equation — {modelType}{linearR2 != null ? `  (R² = ${linearR2.toFixed(4)})` : ""}:</Text>
                             <View style={
                                 {
                                     flexDirection: 'row',
@@ -184,7 +184,6 @@ export default function AnalysisTab({
 
                                 }>
                                     <Text>{formatRegressionEquation(linearFit, calibration)}</Text>
-                                    <Text>{linearR2 != null ? `  (R² = ${linearR2.toFixed(4)})` : ""}</Text>
                                 </View>
 
                                 <View style={

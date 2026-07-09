@@ -31,7 +31,11 @@ export default function MenuButton({
 
 
             {label && (
-                <Text style={styles.buttonText}>
+                <Text
+                    style={styles.buttonText}
+                    numberOfLines={1}
+                    ellipsizeMode="middle"
+                >
                     {label}
                 </Text>
             )}
@@ -62,7 +66,7 @@ const styles = StyleSheet.create({
     },
 
     buttonText: {
-        ...TYPOGRAPHY.title,
+        ...TYPOGRAPHY.section,
         marginLeft: 8,
     },
 })

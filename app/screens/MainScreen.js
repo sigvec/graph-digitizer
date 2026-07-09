@@ -14,7 +14,7 @@ import {
 import {
   GestureHandlerRootView,
 } from "react-native-gesture-handler";
-
+import * as Clipboard from "expo-clipboard";
 import { useSharedValue } from "react-native-reanimated";
 
 import formatTimestamp from "../utils/timestamp";
@@ -44,6 +44,7 @@ import storage from '../../frontend/services/storage';
 import { loadAllProjects } from "../../frontend/services/storage/localStorage";
 import { copyToLocal, removeOrphanedImages } from "../../frontend/services/storage/imageStorage";
 import { hydrateProject } from '../utils/projectTransform';
+import { shareProject } from '../../frontend/services/sharing/shareProject'
 
 import GraphCanvas from '../components/GraphCanvas';
 import CalibrationTab from '../components/Tabs/CalibrationTab';
@@ -59,6 +60,7 @@ import { AxisScale } from "../calibration/constants";
 import { TextInputModal, ProjectMenuModal, ColourPickerModal } from '../components/Modals';
 
 import Constants from "expo-constants";
+import { importProject } from "../../frontend/services/sharing/importProject";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "0.3.0";
 const PROJECT_FORMAT_VERSION = 1;
@@ -82,6 +84,8 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [projectUpdatedAt, setProjectUpdatedAt] = useState(null);
   const [projectMenuVisible, setProjectMenuVisible] = useState(false);
   const [colourPickerVisible, setColourPickerVisible] = useState(false);
+  const [shareProjectVisible, setShareProjectVisible] = useState(false);
+  const [importProjectVisible, setImportProjectVisible] = useState(false);
   const [image, setImage] = useState(null);
   const [zoomDisplay, setZoomDisplay] = useState(1);
   const [viewportSize, setViewportSize] =
@@ -235,12 +239,13 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     const ui = hydrated.uiState || {};
 
-    scale.value = ui.scale || 1;
-    setZoomDisplay(1);
     const imageUri = hydrated.image;
 
+    const translateX = ui.translateXscaled * displaySize.width || ui.translateX
+    const translateY = ui.translateYscaled * displaySize.height || ui.translateY
+
     setIsRestoringImage(true)
-    setProjectImage(imageUri, ui.scale, ui.translateX, ui.translateY);
+    setProjectImage(imageUri, ui.zoomDisplay, translateX, translateY);
 
     const loadedMode = ui.mode || 'points'
     setMode(loadedMode);
@@ -365,11 +370,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
   async function handleSave() {
 
-    const now = new Date().toISOString();
-    const finalCreated = projectCreatedAt ?? now;
-    const finalUpdated = now;
-
-
     try {
       const finalName = projectName.trim() || 'Untitled Project';
       const project = buildFullProjectExport(
@@ -378,22 +378,22 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       );
 
       if (currentProjectId) {
-        await storage.updateProject(
+        const result = await storage.updateProject(
           currentProjectId,
           project
         );
+
+        setProjectCreatedAt(result.createdAt);
+        setProjectUpdatedAt(result.updatedAt);
 
       } else {
         const result = await storage.saveProject(project);
 
         setCurrentProjectId(result.id);
+        setProjectCreatedAt(result.createdAt);
+        setProjectUpdatedAt(result.updatedAt);
 
       }
-
-
-      setProjectName(finalName);
-      setProjectCreatedAt(finalCreated);
-      setProjectUpdatedAt(finalUpdated);
 
       setDirty(false);
 
@@ -403,31 +403,73 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   }
 
 
-  async function handleSaveAs(newName) {
-
-    const now = new Date().toISOString();
-    const finalCreated = now;
-    const finalUpdated = now;
+  async function handleSaveAs(newName, inputProject) {
 
     try {
       const finalName = newName.trim() || 'Untitled Project';
-      const project = buildFullProjectExport(
+
+      const projectToSave = inputProject ?? buildFullProjectExport(
         datasets,
         finalName,
       );
 
-      const result = await storage.saveProject(project);
-
+      const result = await storage.saveProject(projectToSave);
       setCurrentProjectId(result.id);
       setProjectName(finalName);
-      setProjectCreatedAt(finalCreated);
-      setProjectUpdatedAt(finalUpdated);
+      setProjectCreatedAt(result.createdAt);
+      setProjectUpdatedAt(result.updatedAt);
 
       setDirty(false);
+
+      return result;
 
     } catch (err) {
       console.error(err);
     }
+  }
+
+  async function handleShareProject() {
+    const finalName = projectName.trim() || 'Untitled Project';
+    const project = buildFullProjectExport(
+      datasets,
+      finalName,
+    );
+
+    const share = await shareProject(project);
+
+    Alert.alert(
+      "Project Shared",
+      `Share ID: ${share.shareId}
+
+Created: ${formatTimestamp(share.createdAt)}
+`
+    );
+    await Clipboard.setStringAsync(share.shareId);
+
+  }
+
+  async function handleImportProject(shareId) {
+    const project = await importProject(shareId)
+
+    const result = await handleSaveAs(project.name, project);
+
+    project.id = result.newId;
+    project.createdAt = result.createdAt;
+    project.updatedAt = result.updatedAt;
+
+    setLoadedProject(project);
+
+    Alert.alert(
+      "Project Imported",
+      `"${project.name}"`,
+      [
+        {
+          text: 'Close',
+          style: 'default',
+        },
+      ]
+    );
+
   }
 
   function buildFullProjectExport(
@@ -436,7 +478,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   ) {
 
     return {
-      version: PROJECT_FORMAT_VERSION,
+      formatVersion: PROJECT_FORMAT_VERSION,
       name: projectName || 'Untitled Project',
       appVersion: APP_VERSION,
       device: {
@@ -474,8 +516,8 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         zoomDisplay,
 
         scale: scale.value,
-        translateX: translateX.value,
-        translateY: translateY.value,
+        translateXscaled: translateX.value / displaySize.width,
+        translateYscaled: translateY.value / displaySize.height,
 
         activeDatasetId,
         showRegressionLine,
@@ -494,7 +536,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     });
   }
 
-  async function setProjectImage(uri, scale, xTranslation, yTranslation) {
+  async function setProjectImage(uri, zoom, xTranslation, yTranslation) {
 
     if (typeof uri !== "string" || uri.length === 0) {
 
@@ -511,7 +553,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       setImageWidth(width);
       setImageHeight(height);
       setImage(uri);
-      fitImage(width, height, scale, xTranslation, yTranslation);
+      fitImage(width, height, zoom, xTranslation, yTranslation);
       setIsRestoringImage(false);
 
     } catch (error) {
@@ -1162,9 +1204,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   function fitImage(
     imgWidth,
     imgHeight,
-    newScale,
-    xTranslation,
-    yTranslation,
+    newZoom,
+    newXTranslation,
+    newYTranslation,
   ) {
 
     if (
@@ -1181,18 +1223,18 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       displaySize.height / imgHeight
     );
 
-    const finalScale = newScale || fitScale
+    const finalZoom = newZoom || 1
+    const finalScale = finalZoom * fitScale
+    setZoomDisplay(finalZoom)
 
     scale.value = finalScale;
     savedScale.value = finalScale;
 
-    translateX.value = xTranslation || 0;
-    translateY.value = yTranslation || 0;
+    translateX.value = newXTranslation || 0;
+    translateY.value = newYTranslation || 0;
 
-    savedTranslateX.value = xTranslation || 0;
-    savedTranslateY.value = yTranslation || 0;
-
-    setZoomDisplay(finalScale / fitScale)
+    savedTranslateX.value = newXTranslation || 0;
+    savedTranslateY.value = newYTranslation || 0;
   }
 
   function fitCurrentImage() {
@@ -1216,10 +1258,16 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         <View style={styles.titleBar}>
 
 
-          <MenuButton
-            label={projectName}
-            onPress={() => setRenameProjectVisible(true)}
-          />
+          <View style={{
+            flex: 1,
+            alignItems: 'flex-start'
+          }}
+          >
+            <MenuButton
+              label={projectName}
+              onPress={() => setRenameProjectVisible(true)}
+            />
+          </View>
 
           <View style={styles.titleBarActions}>
 
@@ -1356,8 +1404,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                               height: 6,
                               borderRadius: 3,
                               marginRight: 6,
-                            },
-                            {
                               backgroundColor: activeDataset.colour,
                             },
                           ]}
@@ -1595,7 +1641,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         Project:
                       </Text>
                       <Text
-                        numberOfLines={1}
+                        numberOfLines={2}
                         ellipsizeMode="middle"
                         style={styles.projectTabItemValue}
                       >
@@ -1635,17 +1681,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         ellipsizeMode="middle"
                         style={styles.projectTabItemValue}
                       >
-                        {image ? getFilename(image) : 'No image'}
-                      </Text>
-                    </View>
-
-
-                    <View style={styles.projectTabItemRow}>
-                      <View style={styles.projectTabItemLabelSpacer} />
-                      <Text
-                        style={styles.projectTabItemValue}
-                      >
-                        [{imageWidth} x {imageHeight}]
+                        {image ? `[${imageWidth} x ${imageHeight}]` : 'No image'}
                       </Text>
                     </View>
 
@@ -2124,6 +2160,20 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
           }
         />
 
+        <TextInputModal
+          visible={importProjectVisible}
+          title="Enter project ID:"
+          initialValue={""}
+          confirmLabel="Import"
+          onConfirm={shareId => {
+            handleImportProject(shareId);
+            setImportProjectVisible(false);
+          }}
+          onCancel={() =>
+            setImportProjectVisible(false)
+          }
+        />
+
 
         <ProjectMenuModal
           visible={projectMenuVisible}
@@ -2144,8 +2194,39 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
             setProjectMenuVisible(false);
           }}
           handleNewProject={() => {
-            handleNewProject(true);
+            handleNewProject();
             setProjectMenuVisible(false);
+          }}
+          handleShareProject={() => {
+            handleShareProject();
+            setProjectMenuVisible(false);
+          }}
+          handleImportProject={() => {
+            setProjectMenuVisible(false);
+            if (dirty) {
+
+              Alert.alert(
+                'Unsaved Changes',
+                'Discard current project changes?',
+                [
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                  },
+                  {
+                    text: 'Discard',
+                    style: 'destructive',
+                    onPress: () => { setImportProjectVisible(true) },
+                  },
+                ]
+              );
+
+              return;
+            } else {
+              setImportProjectVisible(true)
+            }
+
+
           }}
           onCancel={() =>
             setProjectMenuVisible(false)
