@@ -2,6 +2,7 @@ import { Directory, File, Paths } from 'expo-file-system';
 import type { ImagePickerAsset } from 'expo-image-picker';
 import 'react-native-get-random-values';
 import { v4 as uuid } from 'uuid';
+import { SharedProjectImage } from '../sharing/SharedProject';
 
 const imageDirectory = new Directory(Paths.document, 'images');
 
@@ -78,6 +79,39 @@ export async function copyToLocal(
     return {
         uri: destination.uri,
         mimeType: asset.mimeType ?? 'image/jpeg',
+    };
+}
+
+export async function saveImageDataToLocal(
+    imageData: SharedProjectImage
+): Promise<StoredImage> {
+    imageDirectory.create({
+        idempotent: true,
+        intermediates: true,
+    });
+
+    const extension =
+        extensionFromFilename(imageData.mimeType) ?? "jpg";
+
+    const filename = generateFilename(extension);
+
+    const destination = new File(imageDirectory, filename);
+
+    destination.write(imageData.data, {
+        encoding: "base64",
+    });
+
+    try {
+        destination.write(imageData.data, {
+            encoding: "base64",
+        });
+    } catch (error) {
+        throw new Error(`Failed to copy image: ${String(error)}`);
+    }
+
+    return {
+        uri: destination.uri,
+        mimeType: imageData.mimeType ?? 'image/jpeg',
     };
 }
 

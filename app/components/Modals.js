@@ -167,6 +167,8 @@ export function ProjectMenuModal({
     handleRenameProject,
     handleCloseProject,
     handleNewProject,
+    handleShareProject,
+    handleImportProject,
     onCancel,
 }) {
 
@@ -203,6 +205,16 @@ export function ProjectMenuModal({
                     <IconButton
                         label="New Project"
                         onPress={handleNewProject}
+                    />
+
+                    <IconButton
+                        label="Share Project"
+                        onPress={handleShareProject}
+                    />
+
+                    <IconButton
+                        label="Import Project"
+                        onPress={handleImportProject}
                     />
 
                     <IconButton

@@ -25,7 +25,11 @@ export async function saveProject(
         JSON.stringify(payload)
     );
 
-    return { id };
+    return {
+        id,
+        createdAt: now,
+        updatedAt: now,
+    };
 }
 
 export async function loadProject(
