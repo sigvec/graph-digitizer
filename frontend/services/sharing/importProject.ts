@@ -8,20 +8,48 @@ export async function importProject(
     shareId: string
 ): Promise<Project> {
 
-    const response = await fetch(
-        `${API_BASE_URL}/shared-projects/${shareId}`,
-    );
+    try {
 
-    if (!response.ok) {
-        throw new Error(
-            `Import failed (${response.status})`
+        const response = await fetch(
+            `${API_BASE_URL}/shared-projects/${shareId}`,
         );
+
+        if (!response.ok) {
+
+            switch (response.status) {
+
+                case 404:
+                    throw new Error("NOT_FOUND");
+
+                case 500:
+                    throw new Error("SERVER");
+
+                default:
+                    throw new Error("HTTP");
+            }
+        }
+
+        const result = await response.json();
+
+        const project =
+            await deserializeProject(result);
+
+        return project
+
+    }
+    catch (err) {
+
+        if (err instanceof Error) {
+            console.log(err.message);
+            if (err.message === "Network request failed") {
+                throw new Error("NETWORK");
+            }
+        }
+        else {
+            console.log(err);
+        }
+
+        throw err;
     }
 
-    const result = await response.json();
-
-    const project =
-        await deserializeProject(result);
-
-    return project
 }
