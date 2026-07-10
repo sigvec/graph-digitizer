@@ -25,6 +25,7 @@ export function TextInputModal({
     confirmLabel = 'OK',
     onConfirm,
     onCancel,
+    message,
 }) {
 
 
@@ -64,6 +65,12 @@ export function TextInputModal({
                         onChangeText={setText}
                         onSubmitEditing={handleConfirm}
                     />
+
+                    {message && (<Text style={styles.paragraph}>
+                        {message}
+                    </Text>
+                    )}
+
 
                     <View style={styles.modalButtons}>
 
@@ -229,6 +236,53 @@ export function ProjectMenuModal({
     );
 }
 
+// ===================================
+// Dialog
+// ===================================
+
+export function Dialog({
+    visible = false,
+    title = "",
+    children,
+    buttons
+}) {
+
+    return (
+        <Modal
+            transparent
+            animationType="fade"
+            visible={visible}
+        >
+            <View style={styles.modalOverlay}>
+                <View style={styles.modalCard}>
+
+                    <Text style={styles.modalTitle}>
+                        {title}
+                    </Text>
+
+                    <View style={{
+                        marginBottom: 12
+                    }}>
+                        {children}
+                    </View>
+
+
+                    <View style={styles.modalButtons}>
+                        {buttons && buttons.map(button => (
+                            <IconButton
+                                key={button.text}
+                                label={button.text}
+                                onPress={button.onPress}
+                            />
+                        ))}
+                    </View>
+
+                </View>
+            </View>
+        </Modal>
+    );
+}
+
 
 // ===================================
 // Styles
@@ -283,5 +337,8 @@ const styles = StyleSheet.create({
         borderRadius: 20,
     },
 
+    paragraph: {
+        marginBottom: 16,
+    },
 
 });

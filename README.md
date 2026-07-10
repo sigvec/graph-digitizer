@@ -4,7 +4,7 @@ A React Native graph digitization tool for extracting numerical data from chart 
 
 ## Overview
 
-Graph Digitizer allows users to load a chart image, calibrate the graph axes, digitize data points, and export the resulting data as CSV.
+Graph Digitizer allows users to load a chart image, calibrate the graph axes, digitize data points, export the resulting data as CSV, and share complete projects publicly.
 
 The application is designed for extracting numerical data from graphs when the original data is unavailable.
 
@@ -34,6 +34,7 @@ The application is designed for extracting numerical data from graphs when the o
 
 * Save/load projects
 * CSV export
+* Share projects via public sharing service
 
 ## Technology
 
@@ -42,6 +43,7 @@ The application is designed for extracting numerical data from graphs when the o
 * React Native SVG
 * React Native Reanimated
 * AsyncStorage
+* Node.js backend
 
 
 ## Screenshots
@@ -80,7 +82,9 @@ Best-fit curve with equation and statistics.
 
 ## Status
 
-Version 0.2.1
+Version 0.3.0
+
+This project is under active development. The current release supports local project storage and public project sharing.
 
 ## License
 

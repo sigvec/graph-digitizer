@@ -9,6 +9,7 @@ import {
   TouchableOpacity,
   Alert,
   Switch,
+  ActivityIndicator
 } from "react-native";
 
 import {
@@ -45,6 +46,7 @@ import { loadAllProjects } from "../../frontend/services/storage/localStorage";
 import { copyToLocal, removeOrphanedImages } from "../../frontend/services/storage/imageStorage";
 import { hydrateProject } from '../utils/projectTransform';
 import { shareProject } from '../../frontend/services/sharing/shareProject'
+import { importProject } from "../../frontend/services/sharing/importProject";
 
 import GraphCanvas from '../components/GraphCanvas';
 import CalibrationTab from '../components/Tabs/CalibrationTab';
@@ -57,10 +59,9 @@ import {
 } from '../constants/geometry';
 import { AxisScale } from "../calibration/constants";
 
-import { TextInputModal, ProjectMenuModal, ColourPickerModal } from '../components/Modals';
+import { TextInputModal, ProjectMenuModal, ColourPickerModal, Dialog } from '../components/Modals';
 
 import Constants from "expo-constants";
-import { importProject } from "../../frontend/services/sharing/importProject";
 
 const APP_VERSION = Constants.expoConfig?.version ?? "0.3.0";
 const PROJECT_FORMAT_VERSION = 1;
@@ -84,8 +85,8 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [projectUpdatedAt, setProjectUpdatedAt] = useState(null);
   const [projectMenuVisible, setProjectMenuVisible] = useState(false);
   const [colourPickerVisible, setColourPickerVisible] = useState(false);
-  const [shareProjectVisible, setShareProjectVisible] = useState(false);
-  const [importProjectVisible, setImportProjectVisible] = useState(false);
+  const [dialog, setDialog] = useState(null);
+  const [justCopied, setJustCopied] = useState(null);
   const [image, setImage] = useState(null);
   const [zoomDisplay, setZoomDisplay] = useState(1);
   const [viewportSize, setViewportSize] =
@@ -125,6 +126,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const savedScale = useSharedValue(1);
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
+  const shareBusy = useRef(false);
 
   // ==================================================
   // Derived Values
@@ -435,40 +437,119 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       finalName,
     );
 
-    const share = await shareProject(project);
+    if (shareBusy.current) {
+      return;
+    }
 
-    Alert.alert(
-      "Project Shared",
-      `Share ID: ${share.shareId}
+    shareBusy.current = true;
 
-Created: ${formatTimestamp(share.createdAt)}
-`
-    );
-    await Clipboard.setStringAsync(share.shareId);
+    try {
+      const share = await shareProject(project);
+
+      setDialog({
+        type: "share-success",
+        share: share
+      });
+    } catch (err) {
+      let message = "Unable to connect to the sharing service. Please check your internet connection and try again."
+
+      switch (err.message) {
+
+        case "NETWORK":
+          message = "Unable to connect to the sharing service. Please check your internet connection and try again."
+          console.warn(err)
+          break;
+
+        case "SERVER":
+          message = "The sharing service is currently unavailable. Please try again later"
+          console.warn(err)
+          break;
+
+        case "HTTP":
+          message = "The sharing service is currently unavailable. Please try again later"
+          console.warn(err)
+          break;
+
+        default:
+          message = "Unable to connect to the sharing service. Please check your internet connection and try again."
+          console.warn(err)
+      }
+
+      setDialog({
+        type: "error",
+        title: "Upload failed",
+        message: message
+      });
+    } finally {
+      shareBusy.current = false;
+    }
 
   }
 
   async function handleImportProject(shareId) {
-    const project = await importProject(shareId)
 
-    const result = await handleSaveAs(project.name, project);
+    if (shareBusy.current) {
+      return;
+    }
 
-    project.id = result.newId;
-    project.createdAt = result.createdAt;
-    project.updatedAt = result.updatedAt;
+    shareBusy.current = true;
 
-    setLoadedProject(project);
+    try {
 
-    Alert.alert(
-      "Project Imported",
-      `"${project.name}"`,
-      [
-        {
-          text: 'Close',
-          style: 'default',
-        },
-      ]
-    );
+      const project = await importProject(shareId)
+
+      const result = await handleSaveAs(project.name, project);
+      project.id = result.newId;
+      project.createdAt = result.createdAt;
+      project.updatedAt = result.updatedAt;
+
+      setLoadedProject(project);
+
+      setDialog({
+        type: "import-success",
+        name: project.name
+      });
+
+    } catch (err) {
+
+      let message = "Unable to connect to the sharing service. Please check your internet connection and try again."
+      switch (err.message) {
+
+        case "NOT_FOUND":
+          message = "The shared project could not be found. Please check the share ID and try again."
+          console.warn(err)
+          break;
+
+        case "NETWORK":
+          message = "Unable to connect to the sharing service. Please check your internet connection and try again."
+          console.warn(err)
+          break;
+
+        case "SERVER":
+          message = "The sharing service is currently unavailable. Please try again later"
+          console.warn(err)
+          break;
+
+        case "HTTP":
+          message = "The sharing service is currently unavailable. Please try again later"
+          console.warn(err)
+          break;
+
+        default:
+          message = "Unable to connect to the sharing service. Please check your internet connection and try again."
+          console.warn(err)
+      }
+
+      setDialog({
+        type: "error",
+        title: "Import failed",
+        message: message
+      });
+
+      return;
+    } finally {
+      shareBusy.current = false;
+    }
 
   }
 
@@ -2160,20 +2241,178 @@ Created: ${formatTimestamp(share.createdAt)}
           }
         />
 
-        <TextInputModal
-          visible={importProjectVisible}
-          title="Enter project ID:"
+        {dialog?.type === "share-confirm" && (<Dialog
+          visible={true}
+          title="Share Project"
+          buttons={[
+            {
+              text: "Cancel",
+              onPress: () => setDialog({
+                type: null,
+              }),
+            },
+            {
+              text: "Upload",
+              onPress: () => {
+                handleShareProject()
+                setDialog({
+                  type: "share-progress",
+                });
+              }
+            }
+          ]}
+        >
+          <Text style={styles.paragraph}>
+            This project will be uploaded to the app's
+            sharing service.
+          </Text>
+
+          <Text style={styles.paragraph}>
+            Anyone with the share ID will be able
+            to import a copy of the project.
+          </Text>
+
+          <Text style={styles.paragraph}>
+            Shared projects are intended for temporary sharing
+            and should not be relied upon for long-term storage.
+          </Text>
+        </Dialog>
+        )}
+
+        {dialog?.type === "share-progress" && (
+          <Dialog
+            visible={true}
+            title="Uploading project..."
+          >
+            <View style={{
+              marginBottom: 4
+            }}>
+              <ActivityIndicator size="large" />
+            </View>
+
+            <Text style={styles.paragraph}>
+              Please wait a moment.
+            </Text>
+          </Dialog>
+        )}
+
+        {dialog?.type === "share-success" && (
+          <Dialog
+            visible={true}
+            title="Project shared"
+            buttons={[
+              {
+                text: "Close",
+                onPress: () => {
+                  setDialog({
+                    type: null,
+                  });
+                },
+              },
+              {
+                text: justCopied ? "Copied!" : "Copy ID",
+                onPress: async () => {
+                  await Clipboard.setStringAsync(dialog.share.shareId);
+                  setJustCopied(true);
+
+                  setTimeout(() => {
+                    setJustCopied(false);
+                  }, 2000);
+
+                }
+              }
+            ]}
+          >
+            <Text style={styles.paragraph}>
+              Share ID:
+            </Text>
+            <Text style={styles.sectionTitle}>
+              {dialog.share.shareId}
+            </Text>
+          </Dialog>
+        )}
+
+        {dialog?.type === "import-input" && (<TextInputModal
+          visible={true}
+          title="Enter the Share ID:"
           initialValue={""}
           confirmLabel="Import"
           onConfirm={shareId => {
             handleImportProject(shareId);
-            setImportProjectVisible(false);
+            setDialog({
+              type: "import-progress",
+            });
           }}
           onCancel={() =>
-            setImportProjectVisible(false)
+            setDialog({
+              type: null,
+            })
           }
+          message="The project will be downloaded from the sharing service, saved as a new local project and opened in the editor."
         />
+        )}
 
+        {dialog?.type === "import-progress" && (
+          <Dialog
+            visible={true}
+            title="Downloading project..."
+          >
+            <View style={{
+              marginBottom: 12
+            }}>
+              <ActivityIndicator size="large" />
+            </View>
+
+            <Text>
+              Please wait a moment.
+            </Text>
+          </Dialog>
+        )}
+
+        {dialog?.type === "import-success" && (
+          <Dialog
+            visible={true}
+            title="Download complete"
+            buttons={[
+              {
+                text: "Close",
+                onPress: () => {
+                  setDialog({
+                    type: null,
+                  });
+                },
+              },
+            ]}
+          >
+            <Text style={styles.statusText}>
+              Project:
+            </Text>
+            <Text style={styles.paragraph}>
+              "{dialog.name || "(No name)"}"
+            </Text>
+          </Dialog>
+        )}
+
+        {dialog?.type === "error" && (
+          <Dialog
+            visible={true}
+            title={dialog.title}
+            buttons={[
+              {
+                text: "Close",
+                onPress: () => {
+                  setDialog({
+                    type: null,
+                  });
+                },
+              },
+            ]}
+          >
+            <Text style={styles.paragraph}>
+              {dialog.message}
+            </Text>
+          </Dialog>
+        )}
 
         <ProjectMenuModal
           visible={projectMenuVisible}
@@ -2198,7 +2437,9 @@ Created: ${formatTimestamp(share.createdAt)}
             setProjectMenuVisible(false);
           }}
           handleShareProject={() => {
-            handleShareProject();
+            setDialog({
+              type: "share-confirm",
+            });
             setProjectMenuVisible(false);
           }}
           handleImportProject={() => {
@@ -2216,14 +2457,20 @@ Created: ${formatTimestamp(share.createdAt)}
                   {
                     text: 'Discard',
                     style: 'destructive',
-                    onPress: () => { setImportProjectVisible(true) },
+                    onPress: () => {
+                      setDialog({
+                        type: "import-input",
+                      });
+                    },
                   },
                 ]
               );
 
               return;
             } else {
-              setImportProjectVisible(true)
+              setDialog({
+                type: "import-input",
+              });
             }
 
 
@@ -2490,6 +2737,10 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLOURS.surface,
     borderRadius: 10,
-  }
+  },
+
+  paragraph: {
+    marginVertical: 4,
+  },
 
 });
