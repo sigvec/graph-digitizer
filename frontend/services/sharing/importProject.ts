@@ -5,13 +5,17 @@ import { deserializeProject } from "./deserializeProject";
 import { API_BASE_URL } from "./apiConfig";
 
 export async function importProject(
-    shareId: string
+    shareId: string,
+    signal?: AbortSignal,
 ): Promise<Project> {
 
     try {
 
         const response = await fetch(
             `${API_BASE_URL}/shared-projects/${shareId}`,
+            {
+                signal
+            }
         );
 
         if (!response.ok) {
@@ -38,15 +42,13 @@ export async function importProject(
 
     }
     catch (err) {
-
         if (err instanceof Error) {
-            console.log(err.message);
             if (err.message === "Network request failed") {
                 throw new Error("NETWORK");
             }
-        }
-        else {
-            console.log(err);
+            if (err.name === "AbortError") {
+                throw new Error("REQUESTED_ABORT");
+            }
         }
 
         throw err;

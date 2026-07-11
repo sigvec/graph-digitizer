@@ -18,8 +18,6 @@ import {
 import * as Clipboard from "expo-clipboard";
 import { useSharedValue } from "react-native-reanimated";
 
-import formatTimestamp from "../utils/timestamp";
-
 import {
   DATASET_COLOURS,
 } from '../constants/colours';
@@ -51,6 +49,7 @@ import { importProject } from "../../frontend/services/sharing/importProject";
 import GraphCanvas from '../components/GraphCanvas';
 import CalibrationTab from '../components/Tabs/CalibrationTab';
 import AnalysisTab from '../components/Tabs/AnalysisTab';
+import ProjectTab from '../components/Tabs/ProjectTab';
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 import {
@@ -63,7 +62,7 @@ import { TextInputModal, ProjectMenuModal, ColourPickerModal, Dialog } from '../
 
 import Constants from "expo-constants";
 
-const APP_VERSION = Constants.expoConfig?.version ?? "0.3.0";
+const APP_VERSION = Constants.expoConfig?.version ?? "0.3.1";
 const PROJECT_FORMAT_VERSION = 1;
 
 export default function MainScreen({ onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
@@ -127,6 +126,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const savedTranslateX = useSharedValue(0);
   const savedTranslateY = useSharedValue(0);
   const shareBusy = useRef(false);
+  const networkTimedOut = useRef(false);
 
   // ==================================================
   // Derived Values
@@ -443,8 +443,17 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     shareBusy.current = true;
 
+    const controller = new AbortController();
+    networkTimedOut.current = false;
+
+    const timeout = setTimeout(() => {
+      networkTimedOut.current = true;
+      controller.abort();
+    }, 30000);
+
     try {
-      const share = await shareProject(project);
+
+      const share = await shareProject(project, controller.signal);
 
       setDialog({
         type: "share-success",
@@ -454,6 +463,20 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       let message = "Unable to connect to the sharing service. Please check your internet connection and try again."
 
       switch (err.message) {
+
+        case "TOO_BIG":
+          message = "This project is too large to be shared. Try reducing the image resolution before sharing."
+          console.warn(err)
+          break;
+
+        case "REQUESTED_ABORT":
+          if (networkTimedOut.current) {
+            message = "The request timed out. Please check your internet connection and try again."
+          } else {
+            message = "Upload cancelled."
+          }
+          console.warn(err)
+          break;
 
         case "NETWORK":
           message = "Unable to connect to the sharing service. Please check your internet connection and try again."
@@ -475,13 +498,22 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
           console.warn(err)
       }
 
+      if (
+        err.message === "REQUEST_ABORTED" &&
+        !networkTimedOut.current
+      ) {
+        return;
+      }
+
       setDialog({
         type: "error",
-        title: "Upload failed",
+        title: err.message === "TOO_BIG" ? "Project Too Large" : "Upload failed",
         message: message
       });
     } finally {
       shareBusy.current = false;
+      clearTimeout(timeout);
+      networkTimedOut.current = false;
     }
 
   }
@@ -494,9 +526,17 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     shareBusy.current = true;
 
+    const controller = new AbortController();
+    networkTimedOut.current = false;
+
+    const timeout = setTimeout(() => {
+      networkTimedOut.current = true;
+      controller.abort();
+    }, 30000);
+
     try {
 
-      const project = await importProject(shareId)
+      const project = await importProject(shareId, controller.signal)
 
       const result = await handleSaveAs(project.name, project);
       project.id = result.newId;
@@ -514,6 +554,15 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
       let message = "Unable to connect to the sharing service. Please check your internet connection and try again."
       switch (err.message) {
+
+        case "REQUESTED_ABORT":
+          if (networkTimedOut.current) {
+            message = "The request timed out. Please check your internet connection and try again."
+          } else {
+            message = "Download cancelled."
+          }
+          console.warn(err)
+          break;
 
         case "NOT_FOUND":
           message = "The shared project could not be found. Please check the share ID and try again."
@@ -540,6 +589,13 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
           console.warn(err)
       }
 
+      if (
+        err.message === "REQUEST_ABORTED" &&
+        !networkTimedOut.current
+      ) {
+        return;
+      }
+
       setDialog({
         type: "error",
         title: "Import failed",
@@ -547,8 +603,11 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       });
 
       return;
+
     } finally {
       shareBusy.current = false;
+      clearTimeout(timeout);
+      networkTimedOut.current = false;
     }
 
   }
@@ -1714,73 +1773,18 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
               <View
                 style={styles.workspaceToolContainer}
               >
+
                 {workspaceTab === 'project' && (
-
-                  <View style={styles.workspaceToolBackground}>
-                    <View style={styles.projectTabItemRow}>
-                      <Text style={styles.projectTabItemLabel}>
-                        Project:
-                      </Text>
-                      <Text
-                        numberOfLines={2}
-                        ellipsizeMode="middle"
-                        style={styles.projectTabItemValue}
-                      >
-                        {projectName ? projectName : "Untitled"}
-                      </Text>
-                    </View>
-                    <View style={styles.projectTabItemRow}>
-                      <Text style={styles.projectTabItemLabel}>
-                        Created:
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        ellipsizeMode="middle"
-                        style={styles.projectTabItemValue}
-                      >
-                        {formatTimestamp(projectCreatedAt) ?? "(Unsaved)"}
-                      </Text>
-                    </View>
-                    <View style={styles.projectTabItemRow}>
-                      <Text style={styles.projectTabItemLabel}>
-                        Updated:
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        ellipsizeMode="middle"
-                        style={styles.projectTabItemValue}
-                      >
-                        {formatTimestamp(projectUpdatedAt) ?? "(Unsaved)"}
-                      </Text>
-                    </View>
-                    <View style={styles.projectTabItemRow}>
-                      <Text style={styles.projectTabItemLabel}>
-                        Image:
-                      </Text>
-                      <Text
-                        numberOfLines={1}
-                        ellipsizeMode="middle"
-                        style={styles.projectTabItemValue}
-                      >
-                        {image ? `[${imageWidth} x ${imageHeight}]` : 'No image'}
-                      </Text>
-                    </View>
-
-                    <View style={styles.projectTabItemRow}>
-                      <View style={styles.projectTabItemLabelSpacer} />
-                      <View
-                        style={styles.projectTabItemValue}
-                      >
-                        <IconButton
-                          icon="image"
-                          label="Change Image"
-                          onPress={pickImage}
-                          disabled={!storageReady}
-                        />
-                      </View>
-                    </View>
-                  </View>
-
+                  <ProjectTab
+                    projectName={projectName}
+                    projectCreatedAt={projectCreatedAt}
+                    projectUpdatedAt={projectUpdatedAt}
+                    image={image}
+                    imageWidth={imageWidth}
+                    imageHeight={imageHeight}
+                    pickImage={pickImage}
+                    storageReady={storageReady}
+                  />
                 )}
 
                 {workspaceTab === 'datasets' && (
@@ -2285,12 +2289,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
             title="Uploading project..."
           >
             <View style={{
-              marginBottom: 4
+              marginBottom: 16
             }}>
               <ActivityIndicator size="large" />
             </View>
 
-            <Text style={styles.paragraph}>
+            <Text>
               Please wait a moment.
             </Text>
           </Dialog>
@@ -2358,7 +2362,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
             title="Downloading project..."
           >
             <View style={{
-              marginBottom: 12
+              marginBottom: 16
             }}>
               <ActivityIndicator size="large" />
             </View>
