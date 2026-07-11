@@ -5,12 +5,22 @@ import { serializeProject } from "./serializeProject";
 
 import { API_BASE_URL } from "./apiConfig";
 
+const MAX_SHARED_PROJECT_SIZE = 20 * 1024 * 1024;
+
 export async function shareProject(
-    project: Project
+    project: Project,
+    signal?: AbortSignal,
 ): Promise<ShareResponse> {
 
     try {
         const sharedProject = await serializeProject(project);
+
+        const json = JSON.stringify(sharedProject);
+        const bytes = new TextEncoder().encode(json).length;
+
+        if (bytes > MAX_SHARED_PROJECT_SIZE) {
+            throw new Error("TOO_BIG");
+        }
 
         const response = await fetch(
             `${API_BASE_URL}/shared-projects`,
@@ -19,8 +29,9 @@ export async function shareProject(
                 headers: {
                     "Content-Type": "application/json",
                 },
-                body: JSON.stringify(sharedProject),
-            }
+                body: json,
+                signal
+            },
         );
 
         if (!response.ok) {
@@ -29,6 +40,9 @@ export async function shareProject(
 
                 case 404:
                     throw new Error("NOT_FOUND");
+
+                case 413:
+                    throw new Error("TOO_BIG");
 
                 case 500:
                     throw new Error("SERVER");
@@ -43,15 +57,13 @@ export async function shareProject(
         return result
 
     } catch (err) {
-
         if (err instanceof Error) {
-            console.log(err.message);
             if (err.message === "Network request failed") {
                 throw new Error("NETWORK");
             }
-        }
-        else {
-            console.log(err);
+            if (err.name === "AbortError") {
+                throw new Error("REQUESTED_ABORT");
+            }
         }
 
         throw err;

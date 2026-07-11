@@ -1,4 +1,4 @@
-export default function formatTimestamp(isoString) {
+export default function formatTimestamp(isoString: string) {
     if (!isoString) return '(No timestamp)';
     return new Date(isoString).toLocaleString(
         undefined,

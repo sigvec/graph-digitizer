@@ -260,15 +260,16 @@ export function Dialog({
                         {title}
                     </Text>
 
-                    <View style={{
-                        marginBottom: 12
-                    }}>
+                    <View style={
+                        buttons && {
+                            marginBottom: 12
+                        }
+                    }>
                         {children}
                     </View>
 
-
-                    <View style={styles.modalButtons}>
-                        {buttons && buttons.map(button => (
+                    {buttons && <View style={styles.modalButtons}>
+                        {buttons.map(button => (
                             <IconButton
                                 key={button.text}
                                 label={button.text}
@@ -276,6 +277,7 @@ export function Dialog({
                             />
                         ))}
                     </View>
+                    }
 
                 </View>
             </View>
