@@ -110,6 +110,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
   const [showRegressionLine, setShowRegressionLine] = useState(false);
+  const [lastShare, setLastShare] = useState(null);
 
   const [storageReady, setStorageReady] = useState(false);
 
@@ -237,7 +238,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     setCalibratedState(hydrated.calibratedState ?? true);
 
     setDatasets(hydrated.datasets);
-    setActiveDatasetId(hydrated.datasets?.[0]?.id || null);
 
     const ui = hydrated.uiState || {};
 
@@ -262,7 +262,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       null
     );
 
-    setShowRegressionLine(ui.showRegressionLine || false)
+    setShowRegressionLine(ui.showRegressionLine || false);
+
+    setLastShare(hydrated.lastShare ?? null);
 
     const snapshot = {
       datasets: hydrated.datasets,
@@ -275,7 +277,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     setIsRestoringHistory(false);
 
-    setLoadedProject(null)
+    setLoadedProject(null);
 
     setDirty(false);
 
@@ -330,11 +332,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     setZoomDisplay(1);
 
-    setWorkspaceTab('edit')
-    setMode('points')
+    setWorkspaceTab('edit');
+    setMode('points');
 
-    setShowRegressionLine(false)
+    setShowRegressionLine(false);
 
+    setLastShare(null);
     setHistory([]);
     setHistoryIndex(0);
     setDirty(false);
@@ -459,6 +462,15 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         type: "share-success",
         share: share
       });
+      const now = new Date().toISOString();
+
+      setLastShare({
+        shareId: share.shareId,
+        sharedAt: now
+      });
+
+      setDirty(true);
+
     } catch (err) {
       let message = "Unable to connect to the sharing service. Please check your internet connection and try again."
 
@@ -651,11 +663,11 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
         };
       }),
+      lastShare,
       uiState: {
         mode,
         zoomDisplay,
 
-        scale: scale.value,
         translateXscaled: translateX.value / displaySize.width,
         translateYscaled: translateY.value / displaySize.height,
 
@@ -1784,6 +1796,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                     imageHeight={imageHeight}
                     pickImage={pickImage}
                     storageReady={storageReady}
+                    lastShare={lastShare}
                   />
                 )}
 

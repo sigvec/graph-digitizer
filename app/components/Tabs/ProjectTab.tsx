@@ -20,6 +20,7 @@ interface Props {
     imageHeight: number,
     pickImage: () => void,
     storageReady: boolean,
+    lastShare: { shareId: string, sharedAt: string }
 }
 
 function formatBytes(bytes: number): string {
@@ -44,6 +45,7 @@ export default function ProjectTab({
     imageHeight,
     pickImage,
     storageReady,
+    lastShare,
 }: Props) {
 
     const imageFile = new File(image);
@@ -111,6 +113,20 @@ export default function ProjectTab({
                 />
             </View>
         </View>
+
+        {lastShare && <View style={styles.projectTabItemRow}>
+            <Text style={styles.projectTabItemLabel}>
+                Last share:
+            </Text>
+            <Text
+                numberOfLines={1}
+                ellipsizeMode="middle"
+                style={styles.projectTabItemValue}
+            >
+                {lastShare.shareId}  ({(formatTimestamp(projectUpdatedAt))})
+            </Text>
+        </View>
+        }
     </View>
 }
 
