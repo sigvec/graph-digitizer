@@ -1,3 +1,7 @@
+import {
+    TextStyle
+} from "react-native";
+
 export const COLOURS = {
     background: '#ffffff',
 
@@ -65,4 +69,4 @@ export const TYPOGRAPHY = {
     small: {
         fontSize: 12,
     },
-};
+} satisfies Record<string, TextStyle>;

@@ -9,7 +9,7 @@ import {
 } from "react-native";
 
 
-import IconButton from '../components/IconButton'
+import IconButton from './IconButton'
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from '../theme';
 import { DATASET_COLOURS } from '../constants/colours';
 

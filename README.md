@@ -82,7 +82,7 @@ Best-fit curve with equation and statistics.
 
 ## Status
 
-Version 0.3.0
+Version 0.3.1
 
 This project is under active development. The current release supports local project storage and public project sharing.
 

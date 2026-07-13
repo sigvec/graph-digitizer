@@ -1,19 +1,28 @@
 import {
     Pressable,
     StyleSheet,
-    Text
+    Text,
+    View
 } from "react-native";
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 
 import AppIcon from './AppIcon'
+import type { IconName } from "./icons";
+
+interface Props {
+    icon: IconName,
+    label: string,
+    onPress: () => void,
+    active: boolean,
+}
 
 export default function TabButton({
     icon,
     label,
     onPress,
     active
-}) {
+}: Props) {
 
     return (
         <Pressable
@@ -29,26 +38,35 @@ export default function TabButton({
                 styles.buttonActive,
             ]}
         >
-            {icon && (
-                <AppIcon name={icon} />
+            {({ pressed }) => (
+                <>
+                    {
+                        icon && (
+                            <AppIcon name={icon} />
+                        )
+                    }
+
+                    {icon && label && (
+                        <View style={styles.gap} />
+                    )}
+
+                    {
+                        label && (
+                            <Text style={[
+                                styles.buttonText,
+
+                                pressed &&
+                                !active &&
+                                styles.buttonPressed,
+
+                            ]}
+                            >
+                                {label}
+                            </Text>
+                        )
+                    }
+                </>
             )}
-
-            {label && (
-                <Text style={({ pressed }) => [
-                    styles.buttonText,
-
-                    pressed &&
-                    !active &&
-                    styles.buttonPressed,
-
-                    active &&
-                    styles.buttonDisabled,
-                ]}
-                >
-                    {label}
-                </Text>
-            )}
-
         </Pressable>
     );
 }
@@ -67,8 +85,6 @@ const styles = StyleSheet.create({
 
         borderRadius: 8,
 
-        backgroundColor: COLOURS.button,
-
         borderWidth: 1,
         borderColor: COLOURS.border,
 
@@ -81,12 +97,15 @@ const styles = StyleSheet.create({
     },
 
     buttonText: {
-        marginLeft: 8,
     },
 
     buttonActive: {
         opacity: 1,
         backgroundColor: COLOURS.surface,
         borderBottomColor: COLOURS.surface,
+    },
+
+    gap: {
+        width: 8,
     },
 })

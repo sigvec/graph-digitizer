@@ -59,10 +59,12 @@ import {
 import { AxisScale } from "../calibration/constants";
 
 import { TextInputModal, ProjectMenuModal, ColourPickerModal, Dialog } from '../components/Modals';
+import { snapVector } from '../../frontend/services/imageAnalysis/snap'
+import { loadDecodedImage } from '../../frontend/services/imageAnalysis/imageLoader'
 
 import Constants from "expo-constants";
 
-const APP_VERSION = Constants.expoConfig?.version ?? "0.3.1";
+const APP_VERSION = Constants.expoConfig?.version ?? "0.4.0";
 const PROJECT_FORMAT_VERSION = 1;
 
 export default function MainScreen({ onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
@@ -128,6 +130,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const savedTranslateY = useSharedValue(0);
   const shareBusy = useRef(false);
   const networkTimedOut = useRef(false);
+  const decodedImage = useRef(null);
 
   // ==================================================
   // Derived Values
@@ -294,6 +297,19 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
   }, [snapshotString]);
 
+
+  useEffect(() => {
+    async function load() {
+      decodedImage.current = await loadDecodedImage(image);
+    }
+
+    try {
+      load();
+    } catch {
+      console.error("Failed to load image", err);
+    }
+  }, [image]);
+
   // ==================================================
   // Helper Functions
   // ==================================================
@@ -302,10 +318,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   //
   // File
   // --------------------------------------------------
-
-  function getFilename(uri) {
-    return uri.split('/').pop();
-  }
 
   function resetWorkspace() {
 
@@ -1160,7 +1172,13 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     const addedPointId = generateId()
     const addedPointRef = { datasetId: activeDatasetId, pointId: addedPointId }
-    const newPoint = { x, y, id: addedPointId }
+
+    const nudgeVec = snapVector(decodedImage.current, x / LOGICAL_WIDTH, y / LOGICAL_HEIGHT)
+
+    const nudgeX = (nudgeVec?.dx || 0) * LOGICAL_WIDTH;
+    const nudgeY = (nudgeVec?.dy || 0) * LOGICAL_HEIGHT;
+
+    const newPoint = { x: x + nudgeX, y: y + nudgeY, id: addedPointId }
 
     setDatasets(prev =>
       prev.map(d =>
@@ -1488,238 +1506,220 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
         </View>
 
         <View style={styles.canvasArea}>
+          <View style={styles.workspace}>
+            <View style={styles.canvasContainer}>
+              <GraphCanvas
+                image={image}
+                pickImage={pickImage}
+                storageReady={storageReady}
+                datasets={datasets}
+                calibration={calibration}
+                currentMode={mode}
 
-          <>
+                activeDatasetId={activeDatasetId}
+                selectedPointRef={selectedPointRef}
+                transformedActive={transformedActive}
+                regression={linearFit}
+                showRegressionLine={showRegressionLine}
+                setSelectedPointRef={setSelectedPointRef}
+                finishDragTransaction={finishDragTransaction}
+                finishCalibrationDragTransaction={finishCalibrationDragTransaction}
+                addPoint={addPoint}
 
-            <View style={styles.workspace}>
+                scale={scale}
+                translateX={translateX}
+                translateY={translateY}
+                savedScale={savedScale}
+                savedTranslateX={savedTranslateX}
+                savedTranslateY={savedTranslateY}
 
+                displaySize={displaySize}
+                imageHeight={imageHeight}
+                setViewportSize={setViewportSize}
+                imageWidth={imageWidth}
 
-
-              <View style={
-                [
-                  styles.canvasContainer,
-                ]
-              }>
-
-                <GraphCanvas
-                  image={image}
-                  pickImage={pickImage}
-                  storageReady={storageReady}
-                  datasets={datasets}
-                  calibration={calibration}
-                  currentMode={mode}
-
-                  activeDatasetId={activeDatasetId}
-                  selectedPointRef={selectedPointRef}
-                  transformedActive={transformedActive}
-                  regression={linearFit}
-                  showRegressionLine={showRegressionLine}
-                  setSelectedPointRef={setSelectedPointRef}
-                  finishDragTransaction={finishDragTransaction}
-                  finishCalibrationDragTransaction={finishCalibrationDragTransaction}
-                  addPoint={addPoint}
-
-                  scale={scale}
-                  translateX={translateX}
-                  translateY={translateY}
-                  savedScale={savedScale}
-                  savedTranslateX={savedTranslateX}
-                  savedTranslateY={savedTranslateY}
-
-                  displaySize={displaySize}
-                  imageHeight={imageHeight}
-                  setViewportSize={setViewportSize}
-                  imageWidth={imageWidth}
-
-                  setZoomDisplay={setZoomDisplay}
-                />
-
-              </View>
-
-              <View style={styles.statusBar}>
-
-
-                <View style={[
-                  styles.statusBarSection,
-                  {
-                    flex: 2,
-                  }
-                ]
-                } >
-                  {mode === 'points' &&
-                    <>
-                      <View style={styles.datasetInfo}>
-                        <View
-                          style={[
-                            {
-                              width: 6,
-                              height: 6,
-                              borderRadius: 3,
-                              marginRight: 6,
-                              backgroundColor: activeDataset.colour,
-                            },
-                          ]}
-                        />
-
-                        <Text
-                          style={styles.statusText}
-                          numberOfLines={1}
-                          ellipsizeMode="tail"
-                        >
-                          {activeDataset?.name || 'None'}
-                        </Text>
-
-                      </View>
-
-                      {selectedPointData ? (
-                        <Text style={styles.statusText}>
-                          Point {selectedPointIndex + 1} / {pointCount}
-                        </Text>
-                      ) : (
-                        <Text style={styles.statusText}>
-                          (No selection)
-                        </Text>
-                      )}
-                    </>
-                  }
-
-                  {mode != 'points' &&
-                    <>
-                      <Text style={styles.statusText}>
-                        Calibrate mode
-                      </Text>
-                      <Text style={styles.statusText}>
-                        {mode === 'origin' && '[Set origin]'}
-                        {mode === 'xRef' && '[Set X reference]'}
-                        {mode === 'yRef' && '[Set Y reference]'}
-                      </Text>
-                    </>
-                  }
-                </View>
-
-
-                {mode === 'points' &&
-                  <View style={styles.statusBarSection} >
-                    {selectedPointData ? (
-                      <Text style={styles.statusTextCoords}>X: {graphPoint
-                        ? graphPoint.x.toFixed(1)
-                        : 'None'}
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>X:
-                      </Text>
-                    )}
-
-                    {selectedPointData ? (
-                      <Text style={styles.statusTextCoords}>Y: {graphPoint
-                        ? graphPoint.y.toFixed(1)
-                        : 'None'}
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>Y:</Text>
-                    )}
-                  </View>
-                }
-
-                {mode === 'origin' &&
-                  <View style={styles.statusBarSection} >
-                    {calibration.origin ? (
-                      <Text style={styles.statusTextCoords}>X: {calibration.origin.x
-                        ? (calibration.origin.x).toFixed(1)
-                        : 'None'}%
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>X:</Text>
-                    )}
-
-                    {calibration.origin ? (
-                      <Text style={styles.statusTextCoords}>Y: {calibration.origin.y
-                        ? (100 - calibration.origin.y).toFixed(1)
-                        : 'None'}%
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>Y:</Text>
-                    )}
-                  </View>
-                }
-
-                {mode === 'xRef' &&
-                  <View style={styles.statusBarSection} >
-                    {calibration.xRef ? (
-                      <Text style={styles.statusTextCoords}>X: {calibration.xRef.x
-                        ? (calibration.xRef.x).toFixed(1)
-                        : 'None'}%
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>X:</Text>
-                    )}
-
-                    {calibration.xRef ? (
-                      <Text style={styles.statusTextCoords}>Y: ({calibration.xRef.y
-                        ? (100 - calibration.xRef.y).toFixed(1)
-                        : 'None'}%)
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>Y:</Text>
-                    )}
-                  </View>
-                }
-
-                {mode === 'yRef' &&
-                  <View style={styles.statusBarSection} >
-                    {calibration.yRef ? (
-                      <Text style={styles.statusTextCoords}>X: ({calibration.yRef.x
-                        ? (calibration.yRef.x).toFixed(1)
-                        : 'None'}%)
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>X:</Text>
-                    )}
-
-                    {calibration.yRef ? (
-                      <Text style={styles.statusTextCoords}>Y: {calibration.yRef.y
-                        ? (100 - calibration.yRef.y).toFixed(1)
-                        : 'None'}%
-                      </Text>
-                    ) : (
-                      <Text style={styles.statusTextCoords}>Y:</Text>
-                    )}
-                  </View>
-                }
-
-                <View style={[
-                  styles.statusBarSection,
-                  {
-                    alignItems: 'flex-end',
-                  }
-                ]
-                } >
-
-                  <View style={styles.statusBarIndicator} >
-                    <AppIcon
-                      name={"notVisible"}
-                      size={14}
-                      colour={mode === 'points' && !activeDataset.visible ? COLOURS.alert : COLOURS.invisible}
-                    />
-                    <AppIcon
-                      name={"locked"}
-                      size={14}
-                      colour={mode === 'points' && activeDataset.locked ? COLOURS.alert : COLOURS.invisible}
-                    />
-
-                  </View>
-                  <Text style={styles.statusText}>
-
-                    Zoom: {zoomDisplay > 0.1 ? (zoomDisplay * 100).toFixed(0) : (zoomDisplay * 100).toFixed(1)}%
-                  </Text>
-                </View>
-
-              </View>
-
+                setZoomDisplay={setZoomDisplay}
+              />
 
             </View>
-          </>
 
+            <View style={styles.statusBar}>
+
+              <View style={[
+                styles.statusBarSection,
+                {
+                  flex: 2,
+                }
+              ]
+              } >
+                {mode === 'points' &&
+                  <>
+                    <View style={styles.datasetInfo}>
+                      <View
+                        style={[
+                          {
+                            width: 6,
+                            height: 6,
+                            borderRadius: 3,
+                            marginRight: 6,
+                            backgroundColor: activeDataset.colour,
+                          },
+                        ]}
+                      />
+
+                      <Text
+                        style={styles.statusText}
+                        numberOfLines={1}
+                        ellipsizeMode="tail"
+                      >
+                        {activeDataset?.name || 'None'}
+                      </Text>
+
+                    </View>
+
+                    {selectedPointData ? (
+                      <Text style={styles.statusText}>
+                        Point {selectedPointIndex + 1} / {pointCount}
+                      </Text>
+                    ) : (
+                      <Text style={styles.statusText}>
+                        (No selection)
+                      </Text>
+                    )}
+                  </>
+                }
+
+                {mode != 'points' &&
+                  <>
+                    <Text style={styles.statusText}>
+                      Calibrate mode
+                    </Text>
+                    <Text style={styles.statusText}>
+                      {mode === 'origin' && '[Set origin]'}
+                      {mode === 'xRef' && '[Set X reference]'}
+                      {mode === 'yRef' && '[Set Y reference]'}
+                    </Text>
+                  </>
+                }
+              </View>
+
+              {mode === 'points' &&
+                <View style={styles.statusBarSection} >
+                  {selectedPointData ? (
+                    <Text style={styles.statusTextCoords}>X: {graphPoint
+                      ? graphPoint.x.toFixed(1)
+                      : 'None'}
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>X:
+                    </Text>
+                  )}
+
+                  {selectedPointData ? (
+                    <Text style={styles.statusTextCoords}>Y: {graphPoint
+                      ? graphPoint.y.toFixed(1)
+                      : 'None'}
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>Y:</Text>
+                  )}
+                </View>
+              }
+
+              {mode === 'origin' &&
+                <View style={styles.statusBarSection} >
+                  {calibration.origin ? (
+                    <Text style={styles.statusTextCoords}>X: {calibration.origin.x
+                      ? (calibration.origin.x).toFixed(1)
+                      : 'None'}%
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>X:</Text>
+                  )}
+
+                  {calibration.origin ? (
+                    <Text style={styles.statusTextCoords}>Y: {calibration.origin.y
+                      ? (100 - calibration.origin.y).toFixed(1)
+                      : 'None'}%
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>Y:</Text>
+                  )}
+                </View>
+              }
+
+              {mode === 'xRef' &&
+                <View style={styles.statusBarSection} >
+                  {calibration.xRef ? (
+                    <Text style={styles.statusTextCoords}>X: {calibration.xRef.x
+                      ? (calibration.xRef.x).toFixed(1)
+                      : 'None'}%
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>X:</Text>
+                  )}
+
+                  {calibration.xRef ? (
+                    <Text style={styles.statusTextCoords}>Y: ({calibration.xRef.y
+                      ? (100 - calibration.xRef.y).toFixed(1)
+                      : 'None'}%)
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>Y:</Text>
+                  )}
+                </View>
+              }
+
+              {mode === 'yRef' &&
+                <View style={styles.statusBarSection} >
+                  {calibration.yRef ? (
+                    <Text style={styles.statusTextCoords}>X: ({calibration.yRef.x
+                      ? (calibration.yRef.x).toFixed(1)
+                      : 'None'}%)
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>X:</Text>
+                  )}
+
+                  {calibration.yRef ? (
+                    <Text style={styles.statusTextCoords}>Y: {calibration.yRef.y
+                      ? (100 - calibration.yRef.y).toFixed(1)
+                      : 'None'}%
+                    </Text>
+                  ) : (
+                    <Text style={styles.statusTextCoords}>Y:</Text>
+                  )}
+                </View>
+              }
+
+              <View style={[
+                styles.statusBarSection,
+                {
+                  alignItems: 'flex-end',
+                }
+              ]
+              } >
+
+                <View style={styles.statusBarIndicator} >
+                  <AppIcon
+                    name={"notVisible"}
+                    size={14}
+                    colour={mode === 'points' && !activeDataset.visible ? COLOURS.alert : COLOURS.invisible}
+                  />
+                  <AppIcon
+                    name={"locked"}
+                    size={14}
+                    colour={mode === 'points' && activeDataset.locked ? COLOURS.alert : COLOURS.invisible}
+                  />
+
+                </View>
+                <Text style={styles.statusText}>
+
+                  Zoom: {zoomDisplay > 0.1 ? (zoomDisplay * 100).toFixed(0) : (zoomDisplay * 100).toFixed(1)}%
+                </Text>
+              </View>
+            </View>
+          </View>
         </View>
 
         <View
