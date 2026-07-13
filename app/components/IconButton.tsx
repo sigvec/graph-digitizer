@@ -11,9 +11,10 @@ import {
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 
 import AppIcon from './AppIcon'
+import type { IconName } from "./icons";
 
 interface IconButtonProps {
-    icon?: ReactNode;
+    icon?: IconName;
     label?: string;
     onPress: () => void;
     selected?: boolean;
@@ -23,7 +24,7 @@ interface IconButtonProps {
 }
 
 export default function IconButton({
-    icon = null,
+    icon,
     label,
     onPress,
     selected = false,

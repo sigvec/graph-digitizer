@@ -11,18 +11,6 @@ import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../../theme";
 import IconButton from '../IconButton';
 import formatTimestamp from '../../utils/timestamp'
 
-interface Props {
-    projectName: string;
-    projectCreatedAt: string,
-    projectUpdatedAt: string,
-    image: string,
-    imageWidth: number,
-    imageHeight: number,
-    pickImage: () => void,
-    storageReady: boolean,
-    lastShare: { shareId: string, sharedAt: string }
-}
-
 function formatBytes(bytes: number): string {
 
     if (bytes < 1024) {
@@ -34,6 +22,18 @@ function formatBytes(bytes: number): string {
     }
 
     return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+interface Props {
+    projectName: string;
+    projectCreatedAt: string,
+    projectUpdatedAt: string,
+    image: string,
+    imageWidth: number,
+    imageHeight: number,
+    pickImage: () => void,
+    storageReady: boolean,
+    lastShare: { shareId: string, sharedAt: string }
 }
 
 export default function ProjectTab({

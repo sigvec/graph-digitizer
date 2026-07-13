@@ -7,12 +7,19 @@ import {
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 
 import AppIcon from './AppIcon'
+import type { IconName } from "./icons";
+
+interface Props {
+    icon: IconName,
+    label: string,
+    onPress: () => void,
+}
 
 export default function MenuButton({
     icon,
     label,
     onPress
-}) {
+}: Props) {
 
     return (
         <Pressable
@@ -54,8 +61,6 @@ const styles = StyleSheet.create({
         minHeight: 44,
 
         paddingVertical: 8,
-
-        backgroundColor: COLOURS.button,
 
         opacity: 1,
     },

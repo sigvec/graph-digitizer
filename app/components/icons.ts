@@ -1,3 +1,7 @@
+import type { LucideIcon } from 'lucide-react-native'
+
+export type IconName = keyof typeof Icons;
+
 import {
     Save,
     FolderOpen,
@@ -65,7 +69,6 @@ export const Icons = {
     nudgeDown: ArrowDown,
     centreImage: LocateFixed,
     palette: Palette,
-    edit: Pencil,
     alert: OctagonAlert,
     hideCurve: ChartScatter,
     showCurveLine: ChartLine,
@@ -73,4 +76,4 @@ export const Icons = {
     duplicate: CopyPlus,
     next: StepForward,
     previous: StepBack,
-};
+} satisfies Record<string, LucideIcon>;
