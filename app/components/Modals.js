@@ -25,7 +25,7 @@ export function TextInputModal({
     confirmLabel = 'OK',
     onConfirm,
     onCancel,
-    message,
+    message = null,
 }) {
 
 

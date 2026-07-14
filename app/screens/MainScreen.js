@@ -6,7 +6,6 @@ import {
   Text,
   Platform,
   ScrollView,
-  TouchableOpacity,
   Alert,
   Switch,
   ActivityIndicator
@@ -24,7 +23,6 @@ import {
 
 import AppIcon from '../components/AppIcon';
 import IconButton from '../components/IconButton';
-import { DatasetActionButton } from '../components/IconButton';
 import MenuButton from '../components/MenuButton';
 import TabButton from '../components/TabButton';
 
@@ -50,6 +48,8 @@ import GraphCanvas from '../components/GraphCanvas';
 import CalibrationTab from '../components/Tabs/CalibrationTab';
 import AnalysisTab from '../components/Tabs/AnalysisTab';
 import ProjectTab from '../components/Tabs/ProjectTab';
+import PointTab from '../components/Tabs/PointTab';
+import DatasetsTab from '../components/Tabs/DatasetsTab';
 
 import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
 import {
@@ -118,6 +118,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
   const [isRestoringHistory, setIsRestoringHistory] = useState(false);
   const [isRestoringImage, setIsRestoringImage] = useState(false);
+
   // ==================================================
   // Refs / Shared Values
   // ==================================================
@@ -717,7 +718,19 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       setImageWidth(width);
       setImageHeight(height);
       setImage(uri);
-      fitImage(width, height, zoom, xTranslation, yTranslation);
+      if (Number.isFinite(zoom)) {
+        fitImage(width, height, Math.abs(zoom), xTranslation, yTranslation);
+      } else {
+        const fitScale = Math.min(
+          displaySize.width / width,
+          displaySize.height / height
+        );
+
+        const finalScale = zoomDisplay * fitScale
+
+        scale.value = finalScale;
+        savedScale.value = finalScale;
+      }
       setIsRestoringImage(false);
 
     } catch (error) {
@@ -743,7 +756,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
         setDirty(true);
 
-        setProjectImage(storedImage.uri)
+        setProjectImage(storedImage.uri, 1)
 
         !activeDatasetId &&
           setActiveDatasetId(datasets?.[0]?.id || null);
@@ -1440,7 +1453,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
           </View>
 
           <View style={styles.titleBarActions}>
-
             <IconButton
               icon="save"
               onPress={handleSave}
@@ -1450,13 +1462,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
               icon="open"
               onPress={onOpenList}
             />
-
-
             <MenuButton
               icon="menu"
               onPress={() => setProjectMenuVisible(true)} disabled={!dirty}
             />
-
 
           </View>
 
@@ -1801,180 +1810,44 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                 )}
 
                 {workspaceTab === 'datasets' && (
-
-                  <View style={styles.datasetTabContainer}>
-
-
-
-                    <ScrollView
-                      style={styles.datasetList}
-                      contentContainerStyle={{
-                        paddingVertical: 1,
-                      }}
-                    >
-
-                      {datasets.map(d => {
-                        const isActive = d.id === activeDatasetId;
-                        const rowOpacity =
-                          d.visible
-                            ? (d.locked ? 0.7 : 1)
-                            : 0.4;
-
-                        return <TouchableOpacity
-                          key={d.id}
-                          onPress={() => {
-                            if (!isActive) {
-                              setActiveDatasetId(d.id)
-                              setSelectedPointRef(null)
-                            }
-                          }
-                          }
-                          style={[
-                            styles.datasetRow,
-                            {
-                              opacity: rowOpacity,
-                            },
-                            d.id === activeDatasetId &&
-                            styles.activeDatasetRow,
-                          ]}
-                        >
-
-                          <View style={styles.datasetInfo}>
-                            <View
-                              style={[
-                                styles.datasetColourDot,
-                                {
-                                  backgroundColor: d.colour,
-                                },
-                              ]}
-                            />
-
-                            <Text
-                              style={styles.datasetName}
-                            >
-                              {d.name}
-                            </Text>
-
-                          </View>
-
-                          <View style={styles.datasetOptions}>
-
-                            <IconButton
-                              icon={d.curveMode === 'none' ? 'hideCurve' : d.curveMode === 'linear' ? 'showCurveLine' : 'showCurveSpline'}
-                              onPress={() => {
-                                toggleCurveVisibility(d.id)
-                                setDirty(true)
-                              }
-                              }
-                            />
-                            <IconButton
-                              icon={d.visible ? 'visible' : 'notVisible'}
-                              onPress={() => {
-                                toggleDatasetVisibility(d.id)
-                                setDirty(true)
-                              }
-                              }
-                            />
-                            <IconButton
-                              icon={d.locked ? 'locked' : 'notLocked'}
-                              onPress={() => {
-                                toggleDatasetLock(d.id)
-                                setDirty(true)
-                              }
-                              }
-                            />
-
-
-                          </View>
-                        </TouchableOpacity>
-
-                      })}
-                    </ScrollView>
-
-                    <View style={styles.datasetToolbar}>
-
-
-                      <View style={styles.toolBarButton}>
-                        <DatasetActionButton
-                          icon="edit"
-                          label="Rename"
-                          onPress={handleRenameDataset}
-                        />
-                      </View>
-
-                      <View style={styles.toolBarButton}>
-                        <DatasetActionButton
-                          icon="palette"
-                          label="Colour"
-                          onPress={() => setColourPickerVisible(true)}
-                        />
-                      </View>
-
-                      <View style={styles.toolBarButton}>
-                        <DatasetActionButton
-                          icon="duplicate"
-                          label="Duplicate"
-                          onPress={() => {
-
-                            const duplicateDataset = createDuplicateDataset(activeDataset);
-
-                            setDatasets(prev => [
-                              ...prev,
-                              duplicateDataset,
-                            ]);
-
-                            setActiveDatasetId(
-                              duplicateDataset.id
-                            );
-
-                            setSelectedPointRef(null);
-
-                            setDirty(true)
-
-                          }}
-                        />
-                      </View>
-
-                      <View style={styles.toolBarButton}>
-                        <DatasetActionButton
-                          icon="delete"
-                          label="Delete"
-                          onPress={handleDeleteDataset}
-                        />
-                      </View>
-
-                      <View style={styles.toolBarButton}>
-                        <DatasetActionButton
-                          icon="add"
-                          label="New"
-                          onPress={() => {
-
-                            const newDataset = createEmptyDataset(datasets.length);
-
-                            setDatasets(prev => [
-                              ...prev,
-                              newDataset,
-                            ]);
-
-                            setActiveDatasetId(
-                              newDataset.id
-                            );
-
-                            setSelectedPointRef(null);
-
-                            setDirty(true)
-
-                          }}
-                        />
-                      </View>
-
-                    </View>
-
-                  </View>
+                  <DatasetsTab
+                    activeDatasetId={activeDatasetId}
+                    setActiveDatasetId={setActiveDatasetId}
+                    activeDataset={activeDataset}
+                    setDatasets={setDatasets}
+                    datasets={datasets}
+                    setDirty={setDirty}
+                    toggleCurveVisibility={toggleCurveVisibility}
+                    toggleDatasetVisibility={toggleDatasetVisibility}
+                    toggleDatasetLock={toggleDatasetLock}
+                    handleDeleteDataset={handleDeleteDataset}
+                    handleRenameDataset={handleRenameDataset}
+                    setColourPickerVisible={setColourPickerVisible}
+                    createDuplicateDataset={createDuplicateDataset}
+                    createEmptyDataset={createEmptyDataset}
+                    setSelectedPointRef={setSelectedPointRef}
+                  />
                 )}
 
-
                 {workspaceTab === 'edit' && (
+                  <PointTab
+                    activeDatasetId={activeDatasetId}
+                    activeDataset={activeDataset}
+                    setDatasets={setDatasets}
+                    selectedPointRef={selectedPointRef}
+                    setSelectedPointRef={setSelectedPointRef}
+                    selectedPointIndex={selectedPointIndex}
+                    selectedPointData={selectedPointData}
+                    pointCount={pointCount}
+                    nudgePoint={nudgePoint}
+                    nudgeAllPoints={nudgeAllPoints}
+                    setNudgeAllPoints={setNudgeAllPoints}
+                    handleDeletePoint={handleDeletePoint}
+                    zoomDisplay={zoomDisplay}
+                  />
+                )}
+
+                {workspaceTab === 'edit1' && (
 
                   <View style={[
                     styles.workspaceToolBackground,
@@ -2111,8 +1984,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
                         <Text>All points</Text>
                       </View>
 
-
-
                     </View>
 
                     <View style={[
@@ -2200,7 +2071,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
             </>)}
         </View>
-
 
         <ColourPickerModal
           visible={colourPickerVisible}
