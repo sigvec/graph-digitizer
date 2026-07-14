@@ -59,6 +59,7 @@ export function transformPoint(point: Point, calibration: Calibration): Point | 
     }
 
     return {
+        id: point.id,
         x: transformedX,
         y: transformedY,
     };
@@ -181,6 +182,7 @@ export function inverseTransformPoint(point: Point, calibration: Calibration): P
     }
 
     return {
+        id: point.id,
         x: transformedX,
         y: transformedY,
     };

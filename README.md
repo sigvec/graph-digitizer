@@ -20,6 +20,7 @@ The application is designed for extracting numerical data from graphs when the o
 ### Digitizing
 
 * Multiple datasets
+* Snap to curve
 * Real-time spline curves
 * Point nudging
 * Dataset translation
@@ -56,12 +57,12 @@ Visualize interpolated curves and manage multiple datasets.
   <img src="screenshots/demo.gif" width="350">
 </p>
 
-### Data Fitting
+### Auto snap-to-curve
 
-Digitize points and perform curve fitting.
+New points automatically snap to nearby curves.
 
 <p align="center">
-  <img src="screenshots/data-fit.png" width="350">
+  <img src="screenshots/snap-to-point.gif" width="350">
 </p>
 
 ### Calibration
@@ -80,9 +81,17 @@ Best-fit curve with equation and statistics.
   <img src="screenshots/analysis.png" width="350">
 </p>
 
+### High precision editing
+
+Fast and accurate manual editing.
+
+<p align="center">
+  <img src="screenshots/data-fit.png" width="350">
+</p>
+
 ## Status
 
-Version 0.3.1
+Version 0.4.0
 
 This project is under active development. The current release supports local project storage and public project sharing.
 

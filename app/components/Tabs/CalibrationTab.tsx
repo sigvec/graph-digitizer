@@ -12,7 +12,21 @@ import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../../theme";
 import AppIcon from '../AppIcon';
 import IconButton from '../IconButton';
 import { AxisScale } from '../../calibration/constants'
-import { TextInputModal } from '../../components/Modals'
+import { TextInputModal } from '../Modals'
+import { Calibration } from '../../calibration/types'
+
+interface Props {
+    updateCalibrationValue: (axis: string, key: string, value: number | string | AxisScale) => boolean,
+    calibration: Calibration,
+    setCalibration: React.Dispatch<React.SetStateAction<Calibration>>,
+    mode: string,
+    setMode: React.Dispatch<React.SetStateAction<string>>,
+    calibratedState: boolean,
+    setCalibratedState: React.Dispatch<React.SetStateAction<boolean>>,
+    setDirty: React.Dispatch<React.SetStateAction<boolean>>,
+    nudgeCalibrationPoint: (mode: string, dx: number, dy: number) => void,
+    zoomDisplay: number,
+}
 
 export default function CalibrationTab({
     updateCalibrationValue,
@@ -25,7 +39,7 @@ export default function CalibrationTab({
     setDirty,
     nudgeCalibrationPoint,
     zoomDisplay,
-}) {
+}: Props) {
 
     const [x0Text, setX0Text] = useState(String(calibration.x.value0));
     const [x1Text, setX1Text] = useState(String(calibration.x.value1));
@@ -52,7 +66,6 @@ export default function CalibrationTab({
     return <>
         <ScrollView
             style={styles.workspaceToolbarContainer}
-            vertical
         >
 
             <View style={styles.workspaceToolBackground}>
@@ -295,10 +308,9 @@ export default function CalibrationTab({
                             selected={mode === 'origin'}
                         />
                         {!calibratedState && (
-                            <View style={[
-                                styles.statusBarIndicator,
+                            <View style={
                                 { justifyContent: 'center' }
-                            ]}>
+                            }>
                                 <AppIcon
                                     name={"alert"}
                                     size={14}
@@ -403,8 +415,8 @@ export default function CalibrationTab({
             title="Enter new value for X0"
             initialValue={x0Text}
             confirmLabel="Apply"
-            onConfirm={newName => {
-                const value = parseFloat(newName);
+            onConfirm={(newValue: string) => {
+                const value = parseFloat(newValue);
                 if (updateCalibrationValue("x", "value0", value)) {
                     setX0Text(String(value));
                 } else {
@@ -424,8 +436,8 @@ export default function CalibrationTab({
             title="Enter new value for X1"
             initialValue={x1Text}
             confirmLabel="Apply"
-            onConfirm={newName => {
-                const value = parseFloat(newName);
+            onConfirm={(newValue: string) => {
+                const value = parseFloat(newValue);
                 if (updateCalibrationValue("x", "value1", value)) {
                     setX1Text(String(value));
                 } else {
@@ -445,8 +457,8 @@ export default function CalibrationTab({
             title="Enter new value for Y0"
             initialValue={y0Text}
             confirmLabel="Apply"
-            onConfirm={newName => {
-                const value = parseFloat(newName);
+            onConfirm={(newValue: string) => {
+                const value = parseFloat(newValue);
                 if (updateCalibrationValue("y", "value0", value)) {
                     setY0Text(String(value));
                 } else {
@@ -466,8 +478,8 @@ export default function CalibrationTab({
             title="Enter new value for Y1"
             initialValue={y1Text}
             confirmLabel="Apply"
-            onConfirm={newName => {
-                const value = parseFloat(newName);
+            onConfirm={(newValue: string) => {
+                const value = parseFloat(newValue);
                 if (updateCalibrationValue("y", "value1", value)) {
                     setY1Text(String(value));
                 } else {
@@ -490,14 +502,13 @@ const styles = StyleSheet.create({
     workspaceToolContainer: {
         flex: 1,
         paddingHorizontal: 8,
-        backgroundColor: COLOURS.surfaceToolsContiner,
+        backgroundColor: COLOURS.surfaceToolsContainer,
         borderBottomWidth: 1,
         borderColor: COLOURS.border,
     },
 
     workspaceToolBackground: {
         flex: 1,
-        alignItems: 'start',
         paddingHorizontal: SPACING.sm,
         paddingVertical: SPACING.sm,
         backgroundColor: COLOURS.surface,
