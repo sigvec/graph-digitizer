@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, ReactNode } from "react";
 import {
     View,
     Text,
@@ -17,6 +17,15 @@ import { DATASET_COLOURS } from '../constants/colours';
 // TextInputModal
 // ===================================
 
+interface TextInputModalProps {
+    visible: boolean,
+    title: string,
+    initialValue: string,
+    confirmLabel: string,
+    onConfirm: (newName: string) => void,
+    onCancel: () => void,
+    message: string | null,
+}
 
 export function TextInputModal({
     visible = false,
@@ -26,7 +35,7 @@ export function TextInputModal({
     onConfirm,
     onCancel,
     message = null,
-}) {
+}: TextInputModalProps) {
 
 
     const [text, setText] =
@@ -97,6 +106,13 @@ export function TextInputModal({
 // ColourPickerModal
 // ===================================
 
+interface ColourPickerModalProps {
+    visible: boolean,
+    title: string,
+    currentColour: string,
+    setDatasetColour: (newColour: string) => void,
+    onCancel: () => void,
+}
 
 export function ColourPickerModal({
     visible = false,
@@ -104,7 +120,7 @@ export function ColourPickerModal({
     currentColour,
     setDatasetColour,
     onCancel,
-}) {
+}: ColourPickerModalProps) {
     return (
         <Modal
             visible={visible}
@@ -167,6 +183,19 @@ export function ColourPickerModal({
 // ProjectMenuModal
 // ===================================
 
+interface ProjectMenuModalProps {
+    visible: boolean,
+    handleSave: () => void,
+    handleSaveAs: () => void,
+    handleRenameProject: () => void,
+    handleCloseProject: () => void,
+    handleNewProject: () => void,
+    handleShareProject: () => void,
+    handleImportProject: () => void,
+    handleShowHelp: () => void,
+    onCancel: () => void,
+}
+
 export function ProjectMenuModal({
     visible = false,
     handleSave,
@@ -176,8 +205,9 @@ export function ProjectMenuModal({
     handleNewProject,
     handleShareProject,
     handleImportProject,
+    handleShowHelp,
     onCancel,
-}) {
+}: ProjectMenuModalProps) {
 
     return (
         <Modal
@@ -225,6 +255,11 @@ export function ProjectMenuModal({
                     />
 
                     <IconButton
+                        label="Help"
+                        onPress={handleShowHelp}
+                    />
+
+                    <IconButton
                         label="Cancel"
                         onPress={onCancel}
                     />
@@ -240,12 +275,19 @@ export function ProjectMenuModal({
 // Dialog
 // ===================================
 
+interface DialogProps {
+    visible: boolean,
+    title: string,
+    children: ReactNode,
+    buttons: { text: string, onPress: () => void }[]
+}
+
 export function Dialog({
     visible = false,
     title = "",
     children,
     buttons
-}) {
+}: DialogProps) {
 
     return (
         <Modal

@@ -59,12 +59,13 @@ import {
 import { AxisScale } from "../calibration/constants";
 
 import { TextInputModal, ProjectMenuModal, ColourPickerModal, Dialog } from '../components/Modals';
+import HelpModal from '../components/HelpModal'
 import { snapVector } from '../../frontend/services/imageAnalysis/snap'
 import { loadDecodedImage } from '../../frontend/services/imageAnalysis/imageLoader'
 
 import Constants from "expo-constants";
 
-const APP_VERSION = Constants.expoConfig?.version ?? "0.4.0";
+const APP_VERSION = Constants.expoConfig?.version ?? "0.4.1";
 const PROJECT_FORMAT_VERSION = 1;
 
 export default function MainScreen({ onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
@@ -118,6 +119,8 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
   const [isRestoringHistory, setIsRestoringHistory] = useState(false);
   const [isRestoringImage, setIsRestoringImage] = useState(false);
+
+  const [showHelp, setShowHelp] = useState(false);
 
   // ==================================================
   // Refs / Shared Values
@@ -983,7 +986,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     datasetId
   ) {
 
-
     setDatasets(prev =>
       prev.map(d => {
 
@@ -1376,14 +1378,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     savedTranslateY.value = 0;
   }
 
-  /*
- * Only call when:
- * - User selects a new image
- * - User presses Fit View
- *
- * Do NOT call when loading a project,
- * because zoom/pan should be restored.
- */
   function fitImage(
     imgWidth,
     imgHeight,
@@ -1439,7 +1433,6 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
       >
 
         <View style={styles.titleBar}>
-
 
           <View style={{
             flex: 1,
@@ -2301,6 +2294,12 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
           </Dialog>
         )}
 
+        {showHelp && (<HelpModal
+          visible={true}
+          onClose={() => setShowHelp(false)}
+        />
+        )}
+
         <ProjectMenuModal
           visible={projectMenuVisible}
           handleSave={() => {
@@ -2327,6 +2326,10 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
             setDialog({
               type: "share-confirm",
             });
+            setProjectMenuVisible(false);
+          }}
+          handleShowHelp={() => {
+            setShowHelp(true);
             setProjectMenuVisible(false);
           }}
           handleImportProject={() => {
