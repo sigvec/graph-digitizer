@@ -2,18 +2,19 @@ import AsyncStorage
     from '@react-native-async-storage/async-storage';
 
 import { generateId } from '../../../app/utils/id';
+import type { Project, StoredProject } from '../sharing/Project';
 
 const PROJECT_PREFIX = 'project:';
 
 export async function saveProject(
-    project
+    project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>
 ) {
 
     const now = new Date().toISOString();
 
     const id = generateId();
 
-    const payload = {
+    const payload: StoredProject = {
         ...project,
         id,
         createdAt: now,
@@ -33,8 +34,8 @@ export async function saveProject(
 }
 
 export async function loadProject(
-    id
-) {
+    id: string
+): Promise<StoredProject> {
 
     const json =
         await AsyncStorage.getItem(
@@ -47,7 +48,22 @@ export async function loadProject(
         );
     }
 
-    return JSON.parse(json);
+    try {
+        const rawObject = JSON.parse(json)
+
+        if ('color' in rawObject && !('colour' in rawObject)) {
+            rawObject.colour = rawObject.color;
+            delete rawObject.color;
+        }
+
+        return rawObject;
+
+    } catch (err) {
+        throw new Error(
+            "Couldn't load project"
+        );
+    }
+
 }
 
 export async function loadAllProjects() {
@@ -65,11 +81,12 @@ export async function loadAllProjects() {
             projectKeys
         );
 
-    const result = [];
+    const result: StoredProject[] = [];
 
     for (const [, json] of projects) {
         if (json !== null) {
-            result.push(JSON.parse(json));
+            const parsedData = JSON.parse(json) as StoredProject;
+            result.push(parsedData);
         }
     }
 
@@ -78,20 +95,20 @@ export async function loadAllProjects() {
 
 
 export async function updateProject(
-    id,
-    project
-) {
+    id: string,
+    project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>
+): Promise<StoredProject> {
 
     const now = new Date().toISOString();
 
     const existing =
         await AsyncStorage.getItem(
             PROJECT_PREFIX + id
-        );
+        ) ?? "";
 
     const createdAt = JSON.parse(existing)?.createdAt;
 
-    const payload = {
+    const payload: StoredProject = {
         ...project,
         id,
         createdAt:
@@ -109,7 +126,7 @@ export async function updateProject(
 }
 
 export async function deleteProject(
-    id
+    id: string
 ) {
 
     await AsyncStorage.removeItem(

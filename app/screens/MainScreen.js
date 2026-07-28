@@ -68,7 +68,7 @@ import Constants from "expo-constants";
 const APP_VERSION = Constants.expoConfig?.version ?? "0.4.1";
 const PROJECT_FORMAT_VERSION = 1;
 
-export default function MainScreen({ onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
+export default function MainScreen({ currentProjectId, setCurrentProjectId, onOpenList, loadedProject, setLoadedProject, dirty, setDirty }) {
 
   const DISPLAY_PADDING = SPACING.xs;
   const DEFAULT_CALIBRATION = {
@@ -81,7 +81,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   // State
   // ==================================================
 
-  const [currentProjectId, setCurrentProjectId] = useState(null);
+
   const [projectName, setProjectName] = useState('Untitled Project');
   const [projectCreatedAt, setProjectCreatedAt] = useState(null);
   const [projectUpdatedAt, setProjectUpdatedAt] = useState(null);
@@ -113,7 +113,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
   const [showRegressionLine, setShowRegressionLine] = useState(false);
-  const [lastShare, setLastShare] = useState(null);
+  const [lastShare, setLastShare] = useState(undefined);
 
   const [storageReady, setStorageReady] = useState(false);
 
@@ -271,7 +271,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     setShowRegressionLine(ui.showRegressionLine || false);
 
-    setLastShare(hydrated.lastShare ?? null);
+    setLastShare(hydrated.lastShare ?? undefined);
 
     const snapshot = {
       datasets: hydrated.datasets,
@@ -353,7 +353,7 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
 
     setShowRegressionLine(false);
 
-    setLastShare(null);
+    setLastShare(undefined);
     setHistory([]);
     setHistoryIndex(0);
     setDirty(false);
@@ -1121,6 +1121,9 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     for (let i = datasets.length - 1; i >= 0; i--) {
       const d = datasets[i];
 
+      if (!d.visible) {
+        continue
+      }
       for (let j = d.points.length - 1; j >= 0; j--) {
         const p = d.points[j];
 
@@ -1185,20 +1188,54 @@ export default function MainScreen({ onOpenList, loadedProject, setLoadedProject
     }
 
 
-    const addedPointId = generateId()
-    const addedPointRef = { datasetId: activeDatasetId, pointId: addedPointId }
+    const addedPointId = generateId();
+    const addedPointRef = { datasetId: activeDatasetId, pointId: addedPointId };
 
-    const nudgeVec = snapVector(decodedImage.current, x / LOGICAL_WIDTH, y / LOGICAL_HEIGHT)
+    const nudgeVec = snapVector(decodedImage.current, x / LOGICAL_WIDTH, y / LOGICAL_HEIGHT);
 
     const nudgeX = (nudgeVec?.dx || 0) * LOGICAL_WIDTH;
     const nudgeY = (nudgeVec?.dy || 0) * LOGICAL_HEIGHT;
 
-    const newPoint = { x: x + nudgeX, y: y + nudgeY, id: addedPointId }
+    const newPoint = { id: addedPointId, x: x + nudgeX, y: y + nudgeY };
+
+    let insertPosition;
+
+    if (activeDataset.points.length <= 1) {
+      insertPosition = activeDataset.points.length;
+    } else {
+
+      let closestPoint = 0;
+      let curDistance = (newPoint.x - activeDataset.points[closestPoint].x) ** 2 + (newPoint.y - activeDataset.points[closestPoint].y) ** 2;
+      let minDistance = curDistance;
+
+      for (let i = 1; i < activeDataset.points.length; i++) {
+        curDistance = (newPoint.x - activeDataset.points[i].x) ** 2 + (newPoint.y - activeDataset.points[i].y) ** 2;
+        if (curDistance < minDistance) {
+          minDistance = curDistance;
+          closestPoint = i;
+        }
+      }
+
+      const previousIndex = Math.max(0, closestPoint - 1);
+      const currentIndex = previousIndex + 1;
+
+      const previousPoint = activeDataset.points[previousIndex]
+      const currentPoint = activeDataset.points[currentIndex]
+
+      const increasing = currentPoint.x >= previousPoint.x;
+
+      const left = newPoint.x < activeDataset.points[closestPoint].x;
+
+      const insertAfter = increasing !== left;
+
+      insertPosition = closestPoint + (insertAfter ? 1 : 0);
+
+    }
 
     setDatasets(prev =>
       prev.map(d =>
         d.id === activeDatasetId
-          ? { ...d, points: [...d.points, newPoint] }
+          ? { ...d, points: d.points.toSpliced(insertPosition, 0, newPoint) }
           : d
       )
     );

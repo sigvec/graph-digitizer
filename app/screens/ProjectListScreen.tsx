@@ -7,11 +7,21 @@ import formatTimestamp from '../utils/timestamp';
 
 import IconButton from '../components/IconButton';
 
+import { StoredProject } from '../../frontend/services/sharing/Project';
+
+interface ProjectListScreenProps {
+  onSelect: (id: string) => void,
+  onBack: () => void,
+  currentId: string | null
+}
+
+
 export default function ProjectListScreen({
   onSelect,
   onBack,
-}) {
-  const [projects, setProjects] = useState([]);
+  currentId
+}: ProjectListScreenProps) {
+  const [projects, setProjects] = useState<StoredProject[]>([]);
 
   async function loadProjects() {
     try {
@@ -26,7 +36,7 @@ export default function ProjectListScreen({
     loadProjects();
   }, []);
 
-  async function handleDelete(id) {
+  async function handleDelete(id: string) {
     try {
       await storage.deleteProject(id);
 
@@ -38,7 +48,7 @@ export default function ProjectListScreen({
     }
   }
 
-  function confirmDelete(id) {
+  function confirmDelete(id: string) {
     Alert.alert(
       'Delete Project',
       'This cannot be undone.',
@@ -90,10 +100,6 @@ export default function ProjectListScreen({
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => {
 
-            const timestamp =
-              item.updatedAt ??
-              item.createdAt;
-
             return (
               <View
                 style={{
@@ -123,11 +129,15 @@ export default function ProjectListScreen({
                   </Text>
                 </TouchableOpacity>
 
-                <IconButton
+                {item.id !== currentId && (<IconButton
                   icon="delete"
                   label="Delete"
                   onPress={() => confirmDelete(item.id)}
                 />
+                )}
+
+                {item.id === currentId && (<Text>(Currently project)</Text>
+                )}
 
               </View>
             )

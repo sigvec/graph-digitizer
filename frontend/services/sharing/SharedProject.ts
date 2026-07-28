@@ -8,7 +8,7 @@ export interface SharedProject {
     image: SharedProjectImage | null;
 
     calibration: Calibration;
-    calibrationState: boolean;
+    calibratedState: boolean;
     datasets: Dataset[];
     uiState: {
         mode: string;

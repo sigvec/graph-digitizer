@@ -9,6 +9,8 @@ export default function App() {
     const [loadedProject, setLoadedProject] = useState(null);
     const [dirty, setDirty] = useState(false);
 
+    const [currentProjectId, setCurrentProjectId] = useState(null);
+
     async function handleSelect(id) {
 
         if (dirty) {
@@ -58,6 +60,8 @@ export default function App() {
     return (
         <>
             <MainScreen
+                currentId={currentProjectId}
+                setCurrentProjectId={setCurrentProjectId}
                 onOpenList={handleOpenList}
                 loadedProject={loadedProject}
                 setLoadedProject={setLoadedProject}
@@ -71,6 +75,7 @@ export default function App() {
                 <ProjectListScreen
                     onSelect={handleSelect}
                     onBack={handleBack}
+                    currentId={currentProjectId}
                 />
             </Modal>
         </>

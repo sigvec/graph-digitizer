@@ -8,7 +8,7 @@ export function generateSimpleCSV(datasets: Dataset[], calibration: Calibration)
     datasets.forEach(d => {
 
         const pts = [...d.points].sort((a, b) => a.x - b.x);
-        const transformed = pts.map(p => transformPoint({ x: p.x, y: p.y }, calibration)).filter(Boolean);
+        const transformed = pts.map(p => transformPoint(p, calibration)).filter(Boolean);
 
         // raw data
         transformed.forEach(p => {

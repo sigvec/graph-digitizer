@@ -11,7 +11,7 @@ export interface axisCalibration {
 }
 
 export interface Calibration {
-    origin: Point;
+    origin: { x: number, y: number };
     x: axisCalibration;
     y: axisCalibration;
 }

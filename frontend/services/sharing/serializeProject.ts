@@ -1,8 +1,8 @@
 import { File } from "expo-file-system";
 
-import { SharedProject } from './SharedProject'
-import { SharedProjectImage } from './SharedProject'
-import { Project } from './Project'
+import type { SharedProject } from './SharedProject'
+import type { SharedProjectImage } from './SharedProject'
+import type { Project } from './Project'
 
 
 export async function serializeImage(
@@ -29,7 +29,7 @@ export async function serializeProject(project: Project): Promise<SharedProject>
             : null,
 
         calibration: project.calibration,
-        calibrationState: project.calibrationState,
+        calibratedState: project.calibratedState,
         datasets: project.datasets,
         uiState: project.uiState,
     } satisfies SharedProject;
