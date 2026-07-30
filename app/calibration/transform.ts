@@ -1,35 +1,32 @@
-import type { Point } from '../types/geometry'
+import type { Point } from '../types/geometry';
 import type { Calibration } from '../calibration/types';
-import { AxisScale } from './constants'
+import { AxisScale } from './constants';
 import { LinearRegressionResult } from '../analysis/types';
 
 export function getRegressionPredictor(
     linearFit: LinearRegressionResult,
-    calibration: Calibration
+    calibration: Calibration,
 ): (x: number) => number {
-
     if (calibration.x.scaleType === AxisScale.LINEAR) {
         if (calibration.y.scaleType === AxisScale.LINEAR) {
-            return x => linearFit.slope * x + linearFit.intercept;
+            return (x) => linearFit.slope * x + linearFit.intercept;
         } else {
-            return x => 10 ** (linearFit.slope * x + linearFit.intercept);
+            return (x) => 10 ** (linearFit.slope * x + linearFit.intercept);
         }
     }
 
     if (calibration.x.scaleType === AxisScale.LOG) {
         if (calibration.y.scaleType === AxisScale.LINEAR) {
-            return x => linearFit.slope * Math.log10(x) + linearFit.intercept;
+            return (x) => linearFit.slope * Math.log10(x) + linearFit.intercept;
         } else {
-            return x => (10 ** linearFit.intercept) * (x ** linearFit.slope);
+            return (x) => 10 ** linearFit.intercept * x ** linearFit.slope;
         }
     }
 
-
-    return x => linearFit.slope * x + linearFit.intercept;
+    return (x) => linearFit.slope * x + linearFit.intercept;
 }
 
 export function transformPoint(point: Point, calibration: Calibration): Point | null {
-
     const { origin, x, y } = calibration;
 
     if (!origin || !x || !y) {
@@ -42,7 +39,7 @@ export function transformPoint(point: Point, calibration: Calibration): Point | 
         x.p1,
         x.value0,
         x.value1,
-        x.scaleType
+        x.scaleType,
     );
 
     const transformedY = transformAxis(
@@ -51,7 +48,7 @@ export function transformPoint(point: Point, calibration: Calibration): Point | 
         -y.p1,
         y.value0,
         y.value1,
-        y.scaleType
+        y.scaleType,
     );
 
     if (transformedX == null || transformedY == null) {
@@ -73,34 +70,17 @@ function transformAxis(
     value1: number,
     scaleType: AxisScale,
 ): number | null {
-
-    if (
-        !Number.isFinite(value0) ||
-        !Number.isFinite(value1)
-    ) {
+    if (!Number.isFinite(value0) || !Number.isFinite(value1)) {
         return null;
     }
 
     switch (scaleType) {
-
         case AxisScale.LOG:
-            return transformLog(
-                p,
-                p0,
-                p1,
-                value0,
-                value1
-            );
+            return transformLog(p, p0, p1, value0, value1);
 
         case AxisScale.LINEAR:
         default:
-            return transformLinear(
-                p,
-                p0,
-                p1,
-                value0,
-                value1
-            );
+            return transformLinear(p, p0, p1, value0, value1);
     }
 }
 
@@ -111,14 +91,11 @@ function transformLinear(
     value0: number,
     value1: number,
 ): number | null {
-
     if (p0 === p1) {
         return null;
     }
 
-    const fraction =
-        (p - p0) /
-        (p1 - p0);
+    const fraction = (p - p0) / (p1 - p0);
 
     return value0 + fraction * (value1 - value0);
 }
@@ -130,7 +107,6 @@ function transformLog(
     value0: number,
     value1: number,
 ): number | null {
-
     if (p0 === p1) {
         return null;
     }
@@ -139,9 +115,7 @@ function transformLog(
         return null;
     }
 
-    const fraction =
-        (p - p0) /
-        (p1 - p0);
+    const fraction = (p - p0) / (p1 - p0);
 
     const logV0 = Math.log10(value0);
     const logV1 = Math.log10(value1);
@@ -151,8 +125,10 @@ function transformLog(
     return 10 ** logValue;
 }
 
-export function inverseTransformPoint(point: Point, calibration: Calibration): Point | null {
-
+export function inverseTransformPoint(
+    point: { x: number; y: number },
+    calibration: Calibration,
+): { x: number; y: number } | null {
     const { origin, x, y } = calibration;
 
     if (!origin || !x || !y) {
@@ -165,16 +141,16 @@ export function inverseTransformPoint(point: Point, calibration: Calibration): P
         x.p1,
         x.value0,
         x.value1,
-        x.scaleType
+        x.scaleType,
     );
 
     const transformedY = inverseTransformAxis(
         point.y,
-        (y.p0 ?? origin.y),
+        y.p0 ?? origin.y,
         y.p1,
         y.value0,
         y.value1,
-        y.scaleType
+        y.scaleType,
     );
 
     if (transformedX == null || transformedY == null) {
@@ -182,7 +158,6 @@ export function inverseTransformPoint(point: Point, calibration: Calibration): P
     }
 
     return {
-        id: point.id,
         x: transformedX,
         y: transformedY,
     };
@@ -196,34 +171,17 @@ function inverseTransformAxis(
     value1: number,
     scaleType: AxisScale,
 ): number | null {
-
-    if (
-        !Number.isFinite(value0) ||
-        !Number.isFinite(value1)
-    ) {
+    if (!Number.isFinite(value0) || !Number.isFinite(value1)) {
         return null;
     }
 
     switch (scaleType) {
-
         case AxisScale.LOG:
-            return inverseTransformLog(
-                value,
-                p0,
-                p1,
-                value0,
-                value1
-            );
+            return inverseTransformLog(value, p0, p1, value0, value1);
 
         case AxisScale.LINEAR:
         default:
-            return inverseTransformLinear(
-                value,
-                p0,
-                p1,
-                value0,
-                value1
-            );
+            return inverseTransformLinear(value, p0, p1, value0, value1);
     }
 }
 
@@ -234,7 +192,6 @@ function inverseTransformLinear(
     value0: number,
     value1: number,
 ): number | null {
-
     if (p0 === p1) {
         return null;
     }
@@ -251,7 +208,6 @@ function inverseTransformLog(
     value0: number,
     value1: number,
 ): number | null {
-
     if (p0 === p1) {
         return null;
     }
@@ -263,9 +219,7 @@ function inverseTransformLog(
     const logV0 = Math.log10(value0);
     const logV1 = Math.log10(value1);
 
-    const fraction =
-        (Math.log10(value) - logV0) /
-        (logV1 - logV0);
+    const fraction = (Math.log10(value) - logV0) / (logV1 - logV0);
 
     return p0 + fraction * (p1 - p0);
 }

@@ -1,10 +1,10 @@
-import { StoredProject } from "../../frontend/services/sharing/Project";
+import { StoredProject } from '../../frontend/services/sharing/Project';
 
 export function hydrateProject(project: StoredProject) {
     return {
         ...project,
 
-        datasets: (project.datasets || []).map(d => ({
+        datasets: (project.datasets || []).map((d) => ({
             id: d.id,
             name: d.name,
             colour: d.colour,

@@ -1,16 +1,7 @@
-import React, { useState, useEffect, ReactNode } from "react";
-import {
-    View,
-    Text,
-    StyleSheet,
-    TextInput,
-    TouchableOpacity,
-    Modal
-} from "react-native";
+import React, { useState, useEffect, ReactNode } from 'react';
+import { View, Text, StyleSheet, TextInput, TouchableOpacity, Modal } from 'react-native';
 
-
-import IconButton from './IconButton'
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from '../theme';
+import IconButton from './IconButton';
 import { DATASET_COLOURS } from '../constants/colours';
 
 // ===================================
@@ -18,13 +9,13 @@ import { DATASET_COLOURS } from '../constants/colours';
 // ===================================
 
 interface TextInputModalProps {
-    visible: boolean,
-    title: string,
-    initialValue: string,
-    confirmLabel: string,
-    onConfirm: (newName: string) => void,
-    onCancel: () => void,
-    message: string | null,
+    visible: boolean;
+    title: string;
+    initialValue: string;
+    confirmLabel: string;
+    onConfirm: (newName: string) => void;
+    onCancel: () => void;
+    message?: string;
 }
 
 export function TextInputModal({
@@ -34,12 +25,9 @@ export function TextInputModal({
     confirmLabel = 'OK',
     onConfirm,
     onCancel,
-    message = null,
+    message = undefined,
 }: TextInputModalProps) {
-
-
-    const [text, setText] =
-        useState(initialValue);
+    const [text, setText] = useState(initialValue);
 
     useEffect(() => {
         setText(initialValue ?? '');
@@ -54,18 +42,10 @@ export function TextInputModal({
     }
 
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="fade"
-        >
+        <Modal visible={visible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
-
                 <View style={styles.modalCard}>
-
-                    <Text style={styles.modalTitle}>
-                        {title}
-                    </Text>
+                    <Text style={styles.modalTitle}>{title}</Text>
 
                     <TextInput
                         style={styles.modalInput}
@@ -75,28 +55,14 @@ export function TextInputModal({
                         onSubmitEditing={handleConfirm}
                     />
 
-                    {message && (<Text style={styles.paragraph}>
-                        {message}
-                    </Text>
-                    )}
-
+                    {message && <Text style={styles.paragraph}>{message}</Text>}
 
                     <View style={styles.modalButtons}>
+                        <IconButton label="Cancel" onPress={onCancel} />
 
-                        <IconButton
-                            label="Cancel"
-                            onPress={onCancel}
-                        />
-
-                        <IconButton
-                            label={confirmLabel}
-                            onPress={handleConfirm}
-                        />
-
+                        <IconButton label={confirmLabel} onPress={handleConfirm} />
                     </View>
-
                 </View>
-
             </View>
         </Modal>
     );
@@ -107,11 +73,11 @@ export function TextInputModal({
 // ===================================
 
 interface ColourPickerModalProps {
-    visible: boolean,
-    title: string,
-    currentColour: string,
-    setDatasetColour: (newColour: string) => void,
-    onCancel: () => void,
+    visible: boolean;
+    title: string;
+    currentColour: string;
+    setDatasetColour: (newColour: string) => void;
+    onCancel: () => void;
 }
 
 export function ColourPickerModal({
@@ -122,29 +88,16 @@ export function ColourPickerModal({
     onCancel,
 }: ColourPickerModalProps) {
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="fade"
-        >
-
+        <Modal visible={visible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
-
                 <View style={styles.modalCard}>
-
-                    <Text style={styles.modalTitle}>
-                        {title}
-                    </Text>
+                    <Text style={styles.modalTitle}>{title}</Text>
 
                     <View style={styles.colourGrid}>
-
-                        {DATASET_COLOURS.map(colour => (
-
+                        {DATASET_COLOURS.map((colour) => (
                             <TouchableOpacity
                                 key={colour}
-                                onPress={() =>
-                                    setDatasetColour(colour)
-                                }
+                                onPress={() => setDatasetColour(colour)}
                                 style={[
                                     styles.colourSwatch,
                                     {
@@ -155,28 +108,18 @@ export function ColourPickerModal({
                                         borderWidth: 3,
                                         borderColor: '#000000',
                                     },
-
                                 ]}
                             />
-
                         ))}
-
                     </View>
 
                     <View style={styles.modalButtons}>
-
-                        <IconButton
-                            label="Cancel"
-                            onPress={onCancel}
-                        />
-
+                        <IconButton label="Cancel" onPress={onCancel} />
                     </View>
-
                 </View>
-
             </View>
         </Modal>
-    )
+    );
 }
 
 // ===================================
@@ -184,16 +127,16 @@ export function ColourPickerModal({
 // ===================================
 
 interface ProjectMenuModalProps {
-    visible: boolean,
-    handleSave: () => void,
-    handleSaveAs: () => void,
-    handleRenameProject: () => void,
-    handleCloseProject: () => void,
-    handleNewProject: () => void,
-    handleShareProject: () => void,
-    handleImportProject: () => void,
-    handleShowHelp: () => void,
-    onCancel: () => void,
+    visible: boolean;
+    handleSave: () => void;
+    handleSaveAs: () => void;
+    handleRenameProject: () => void;
+    handleCloseProject: () => void;
+    handleNewProject: () => void;
+    handleShareProject: () => void;
+    handleImportProject: () => void;
+    handleShowHelp: () => void;
+    onCancel: () => void;
 }
 
 export function ProjectMenuModal({
@@ -208,64 +151,28 @@ export function ProjectMenuModal({
     handleShowHelp,
     onCancel,
 }: ProjectMenuModalProps) {
-
     return (
-        <Modal
-            visible={visible}
-            transparent
-            animationType="fade"
-        >
+        <Modal visible={visible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
-
                 <View style={styles.modalCard}>
+                    <IconButton label="Save" onPress={handleSave} />
 
-                    <IconButton
-                        label="Save"
-                        onPress={handleSave}
-                    />
+                    <IconButton label="Save As..." onPress={handleSaveAs} />
 
-                    <IconButton
-                        label="Save As..."
-                        onPress={handleSaveAs}
-                    />
+                    <IconButton label="Rename Project" onPress={handleRenameProject} />
 
-                    <IconButton
-                        label="Rename Project"
-                        onPress={handleRenameProject}
-                    />
+                    <IconButton label="Close Project" onPress={handleCloseProject} />
 
-                    <IconButton
-                        label="Close Project"
-                        onPress={handleCloseProject}
-                    />
+                    <IconButton label="New Project" onPress={handleNewProject} />
 
-                    <IconButton
-                        label="New Project"
-                        onPress={handleNewProject}
-                    />
+                    <IconButton label="Share Project" onPress={handleShareProject} />
 
-                    <IconButton
-                        label="Share Project"
-                        onPress={handleShareProject}
-                    />
+                    <IconButton label="Import Project" onPress={handleImportProject} />
 
-                    <IconButton
-                        label="Import Project"
-                        onPress={handleImportProject}
-                    />
+                    <IconButton label="Help" onPress={handleShowHelp} />
 
-                    <IconButton
-                        label="Help"
-                        onPress={handleShowHelp}
-                    />
-
-                    <IconButton
-                        label="Cancel"
-                        onPress={onCancel}
-                    />
-
+                    <IconButton label="Cancel" onPress={onCancel} />
                 </View>
-
             </View>
         </Modal>
     );
@@ -276,57 +183,45 @@ export function ProjectMenuModal({
 // ===================================
 
 interface DialogProps {
-    visible: boolean,
-    title: string,
-    children: ReactNode,
-    buttons: { text: string, onPress: () => void }[]
+    visible: boolean;
+    title: string;
+    children: ReactNode;
+    buttons: { text: string; onPress: () => void }[];
 }
 
-export function Dialog({
-    visible = false,
-    title = "",
-    children,
-    buttons
-}: DialogProps) {
-
+export function Dialog({ visible = false, title = '', children, buttons }: DialogProps) {
     return (
-        <Modal
-            transparent
-            animationType="fade"
-            visible={visible}
-        >
+        <Modal transparent animationType="fade" visible={visible}>
             <View style={styles.modalOverlay}>
                 <View style={styles.modalCard}>
+                    <Text style={styles.modalTitle}>{title}</Text>
 
-                    <Text style={styles.modalTitle}>
-                        {title}
-                    </Text>
-
-                    <View style={
-                        buttons && {
-                            marginBottom: 12
+                    <View
+                        style={
+                            buttons && {
+                                marginBottom: 12,
+                            }
                         }
-                    }>
+                    >
                         {children}
                     </View>
 
-                    {buttons && <View style={styles.modalButtons}>
-                        {buttons.map(button => (
-                            <IconButton
-                                key={button.text}
-                                label={button.text}
-                                onPress={button.onPress}
-                            />
-                        ))}
-                    </View>
-                    }
-
+                    {buttons && (
+                        <View style={styles.modalButtons}>
+                            {buttons.map((button) => (
+                                <IconButton
+                                    key={button.text}
+                                    label={button.text}
+                                    onPress={button.onPress}
+                                />
+                            ))}
+                        </View>
+                    )}
                 </View>
             </View>
         </Modal>
     );
 }
-
 
 // ===================================
 // Styles
@@ -345,7 +240,7 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 12,
         padding: 20,
-        gap: 10
+        gap: 10,
     },
 
     modalTitle: {
@@ -384,5 +279,4 @@ const styles = StyleSheet.create({
     paragraph: {
         marginBottom: 16,
     },
-
 });

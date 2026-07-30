@@ -1,15 +1,11 @@
-import AsyncStorage
-    from '@react-native-async-storage/async-storage';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { generateId } from '../../../app/utils/id';
-import type { Project, StoredProject } from '../sharing/Project';
+import type { StoredProject } from '../sharing/Project';
 
 const PROJECT_PREFIX = 'project:';
 
-export async function saveProject(
-    project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>
-) {
-
+export async function saveProject(project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>) {
     const now = new Date().toISOString();
 
     const id = generateId();
@@ -21,10 +17,7 @@ export async function saveProject(
         updatedAt: now,
     };
 
-    await AsyncStorage.setItem(
-        PROJECT_PREFIX + id,
-        JSON.stringify(payload)
-    );
+    await AsyncStorage.setItem(PROJECT_PREFIX + id, JSON.stringify(payload));
 
     return {
         id,
@@ -33,23 +26,15 @@ export async function saveProject(
     };
 }
 
-export async function loadProject(
-    id: string
-): Promise<StoredProject> {
-
-    const json =
-        await AsyncStorage.getItem(
-            PROJECT_PREFIX + id
-        );
+export async function loadProject(id: string): Promise<StoredProject> {
+    const json = await AsyncStorage.getItem(PROJECT_PREFIX + id);
 
     if (!json) {
-        throw new Error(
-            'Project not found'
-        );
+        throw new Error('Project not found');
     }
 
     try {
-        const rawObject = JSON.parse(json)
+        const rawObject = JSON.parse(json);
 
         if ('color' in rawObject && !('colour' in rawObject)) {
             rawObject.colour = rawObject.color;
@@ -57,29 +42,18 @@ export async function loadProject(
         }
 
         return rawObject;
-
     } catch (err) {
-        throw new Error(
-            "Couldn't load project"
-        );
+        console.warn(err);
+        throw new Error("Couldn't load project");
     }
-
 }
 
 export async function loadAllProjects() {
+    const keys = await AsyncStorage.getAllKeys();
 
-    const keys =
-        await AsyncStorage.getAllKeys();
+    const projectKeys = keys.filter((k) => k.startsWith(PROJECT_PREFIX));
 
-    const projectKeys =
-        keys.filter(k =>
-            k.startsWith(PROJECT_PREFIX)
-        );
-
-    const projects =
-        await AsyncStorage.multiGet(
-            projectKeys
-        );
+    const projects = await AsyncStorage.multiGet(projectKeys);
 
     const result: StoredProject[] = [];
 
@@ -93,43 +67,28 @@ export async function loadAllProjects() {
     return result;
 }
 
-
 export async function updateProject(
     id: string,
-    project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>
+    project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>,
 ): Promise<StoredProject> {
-
     const now = new Date().toISOString();
 
-    const existing =
-        await AsyncStorage.getItem(
-            PROJECT_PREFIX + id
-        ) ?? "";
+    const existing = (await AsyncStorage.getItem(PROJECT_PREFIX + id)) ?? '';
 
     const createdAt = JSON.parse(existing)?.createdAt;
 
     const payload: StoredProject = {
         ...project,
         id,
-        createdAt:
-            createdAt ??
-            now,
+        createdAt: createdAt ?? now,
         updatedAt: now,
     };
 
-    await AsyncStorage.setItem(
-        PROJECT_PREFIX + id,
-        JSON.stringify(payload)
-    );
+    await AsyncStorage.setItem(PROJECT_PREFIX + id, JSON.stringify(payload));
 
     return payload;
 }
 
-export async function deleteProject(
-    id: string
-) {
-
-    await AsyncStorage.removeItem(
-        PROJECT_PREFIX + id
-    );
+export async function deleteProject(id: string) {
+    await AsyncStorage.removeItem(PROJECT_PREFIX + id);
 }

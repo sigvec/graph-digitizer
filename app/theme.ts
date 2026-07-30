@@ -1,6 +1,4 @@
-import {
-    TextStyle
-} from "react-native";
+import { TextStyle } from 'react-native';
 
 export const COLOURS = {
     background: '#ffffff',

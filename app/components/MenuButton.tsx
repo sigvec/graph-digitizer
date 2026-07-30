@@ -1,52 +1,29 @@
-import {
-    Pressable,
-    StyleSheet,
-    Text
-} from "react-native";
+import { Pressable, StyleSheet, Text } from 'react-native';
 
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
+import { TYPOGRAPHY } from '../theme';
 
-import AppIcon from './AppIcon'
-import type { IconName } from "./icons";
+import AppIcon from './AppIcon';
+import type { IconName } from './icons';
 
 interface Props {
-    icon: IconName,
-    label: string,
-    onPress: () => void,
+    icon: IconName;
+    label: string;
+    onPress: () => void;
 }
 
-export default function MenuButton({
-    icon,
-    label,
-    onPress
-}: Props) {
-
+export default function MenuButton({ icon, label, onPress }: Props) {
     return (
         <Pressable
             onPress={onPress}
-            style={({ pressed }) => [
-                styles.button,
-
-                pressed &&
-                styles.buttonPressed,
-
-            ]}
+            style={({ pressed }) => [styles.button, pressed && styles.buttonPressed]}
         >
-            {icon && (
-                <AppIcon name={icon} />
-            )}
-
+            {icon && <AppIcon name={icon} />}
 
             {label && (
-                <Text
-                    style={styles.buttonText}
-                    numberOfLines={1}
-                    ellipsizeMode="middle"
-                >
+                <Text style={styles.buttonText} numberOfLines={1} ellipsizeMode="middle">
                     {label}
                 </Text>
             )}
-
         </Pressable>
     );
 }
@@ -74,4 +51,4 @@ const styles = StyleSheet.create({
         ...TYPOGRAPHY.section,
         marginLeft: 8,
     },
-})
+});

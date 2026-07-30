@@ -1,4 +1,4 @@
-import React from "react";
+import React from 'react';
 import {
     Modal,
     SafeAreaView,
@@ -7,21 +7,15 @@ import {
     Text,
     TouchableOpacity,
     View,
-} from "react-native";
-import { CircleX } from "lucide-react-native";
+} from 'react-native';
+import { CircleX } from 'lucide-react-native';
 
 interface HelpModalProps {
     visible: boolean;
     onClose: () => void;
 }
 
-function HelpSection({
-    title,
-    children,
-}: {
-    title: string;
-    children: React.ReactNode;
-}) {
+function HelpSection({ title, children }: { title: string; children: React.ReactNode }) {
     return (
         <View style={styles.section}>
             <Text style={styles.sectionTitle}>{title}</Text>
@@ -30,10 +24,7 @@ function HelpSection({
     );
 }
 
-export default function HelpModal({
-    visible,
-    onClose,
-}: HelpModalProps) {
+export default function HelpModal({ visible, onClose }: HelpModalProps) {
     return (
         <Modal
             visible={visible}
@@ -55,8 +46,8 @@ export default function HelpModal({
                     showsVerticalScrollIndicator={false}
                 >
                     <Text style={styles.intro}>
-                        Graph Digitizer extracts numerical data from graph images. The
-                        typical workflow is:
+                        Graph Digitizer extracts numerical data from graph images. The typical
+                        workflow is:
                     </Text>
 
                     <View style={styles.workflow}>
@@ -76,55 +67,53 @@ export default function HelpModal({
                     <View style={styles.tip}>
                         <Text style={styles.tipTitle}>Tip</Text>
                         <Text style={styles.body}>
-                            The <Text style={styles.bold}>Calibrate</Text> tab is used only
-                            for calibration. To add, move or delete data points, switch to any
-                            other tab.
+                            The <Text style={styles.bold}>Calibrate</Text> tab is used only for
+                            calibration. To add, move or delete data points, switch to any other
+                            tab.
                         </Text>
                     </View>
 
                     <HelpSection title="Import Image">
                         <Text style={styles.body}>
-                            Tap <Text style={styles.bold}>Import Image</Text> to select a
-                            graph from your device. Higher-resolution images generally produce
-                            the best results.
+                            Tap <Text style={styles.bold}>Import Image</Text> to select a graph from
+                            your device. Higher-resolution images generally produce the best
+                            results.
                         </Text>
                     </HelpSection>
 
                     <HelpSection title="Calibrate">
                         <Text style={styles.body}>
                             Select the <Text style={styles.bold}>Calibrate</Text> tab before
-                            positioning the calibration markers and entering their values.
-                            Both linear and logarithmic axes are supported.
+                            positioning the calibration markers and entering their values. Both
+                            linear and logarithmic axes are supported.
                         </Text>
                     </HelpSection>
 
                     <HelpSection title="Digitize">
                         <Text style={styles.body}>
-                            Switch to any tab{" "}
-                            <Text style={styles.bold}>other than Calibrate</Text> to add or
-                            edit data points. Tap near the graph to create a point.
+                            Switch to any tab <Text style={styles.bold}>other than Calibrate</Text>{' '}
+                            to add or edit data points. Tap near the graph to create a point.
                         </Text>
                     </HelpSection>
 
                     <HelpSection title="Snap to Curve">
                         <Text style={styles.body}>
-                            New points are automatically adjusted to the nearest
-                            detected curve. You can always drag points afterwards to refine
-                            their positions.
+                            New points are automatically adjusted to the nearest detected curve. You
+                            can always drag points afterwards to refine their positions.
                         </Text>
                     </HelpSection>
 
                     <HelpSection title="Analyse">
                         <Text style={styles.body}>
-                            Use interpolation or regression analysis to fit curves to your
-                            digitized data.
+                            Use interpolation or regression analysis to fit curves to your digitized
+                            data.
                         </Text>
                     </HelpSection>
 
                     <HelpSection title="Save & Share">
                         <Text style={styles.body}>
-                            Projects can be saved locally, shared using a public link, or
-                            exported as CSV files for use in other applications.
+                            Projects can be saved locally, shared using a public link, or exported
+                            as CSV files for use in other applications.
                         </Text>
                     </HelpSection>
                 </ScrollView>
@@ -136,22 +125,22 @@ export default function HelpModal({
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-        backgroundColor: "#fff",
+        backgroundColor: '#fff',
     },
 
     header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        alignItems: "center",
+        flexDirection: 'row',
+        justifyContent: 'space-between',
+        alignItems: 'center',
         paddingHorizontal: 20,
         paddingVertical: 16,
         borderBottomWidth: StyleSheet.hairlineWidth,
-        borderBottomColor: "#ddd",
+        borderBottomColor: '#ddd',
     },
 
     title: {
         fontSize: 24,
-        fontWeight: "700",
+        fontWeight: '700',
     },
 
     content: {
@@ -166,13 +155,13 @@ const styles = StyleSheet.create({
     },
 
     workflow: {
-        alignItems: "center",
+        alignItems: 'center',
         marginBottom: 32,
     },
 
     workflowItem: {
         fontSize: 18,
-        fontWeight: "600",
+        fontWeight: '600',
     },
 
     arrow: {
@@ -181,7 +170,7 @@ const styles = StyleSheet.create({
     },
 
     tip: {
-        backgroundColor: "#f5f5f5",
+        backgroundColor: '#f5f5f5',
         borderRadius: 8,
         padding: 16,
         marginBottom: 32,
@@ -189,7 +178,7 @@ const styles = StyleSheet.create({
 
     tipTitle: {
         fontSize: 16,
-        fontWeight: "700",
+        fontWeight: '700',
         marginBottom: 8,
     },
 
@@ -199,7 +188,7 @@ const styles = StyleSheet.create({
 
     sectionTitle: {
         fontSize: 20,
-        fontWeight: "700",
+        fontWeight: '700',
         marginBottom: 8,
     },
 
@@ -209,6 +198,6 @@ const styles = StyleSheet.create({
     },
 
     bold: {
-        fontWeight: "600",
+        fontWeight: '600',
     },
 });

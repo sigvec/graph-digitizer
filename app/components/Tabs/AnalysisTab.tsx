@@ -1,25 +1,18 @@
-import React from "react";
-import {
-    View,
-    StyleSheet,
-    Text,
-    TextStyle,
-    ScrollView,
-    Switch,
-} from "react-native";
+import React from 'react';
+import { View, StyleSheet, Text, TextStyle, ScrollView, Switch } from 'react-native';
 
-import * as Clipboard from "expo-clipboard";
+import * as Clipboard from 'expo-clipboard';
 
-import { Calibration } from '../../calibration/types'
-import { Dataset, DatasetStatistics } from '../../datasets/types'
-import { LinearRegressionResult } from '../../analysis/types'
+import { Calibration } from '../../calibration/types';
+import { Dataset, DatasetStatistics } from '../../datasets/types';
+import { LinearRegressionResult } from '../../analysis/types';
 
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../../theme";
+import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
 import AppIcon from '../AppIcon';
 import IconButton from '../IconButton';
-import { formatRegressionEquation } from '../../analysis/equationFormatter'
-import { generateSimpleCSV } from '../../export/csv'
-import { AxisScale } from "../../calibration/constants";
+import { formatRegressionEquation } from '../../analysis/equationFormatter';
+import { generateSimpleCSV } from '../../export/csv';
+import { AxisScale } from '../../calibration/constants';
 
 interface Props {
     datasets: Dataset[];
@@ -31,27 +24,27 @@ interface Props {
     calibratedState: boolean;
     showRegressionLine: boolean;
     setShowRegressionLine: React.Dispatch<React.SetStateAction<boolean>>;
-    setDirty: React.Dispatch<React.SetStateAction<boolean>>;
+    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 function getRegressionModelType(calibration: Calibration): string {
     if (calibration.x.scaleType === AxisScale.LINEAR) {
         if (calibration.y.scaleType === AxisScale.LINEAR) {
-            return "Linear";
+            return 'Linear';
         } else {
-            return "Exponential";
+            return 'Exponential';
         }
     }
 
     if (calibration.x.scaleType === AxisScale.LOG) {
         if (calibration.y.scaleType === AxisScale.LINEAR) {
-            return "Logarithmic";
+            return 'Logarithmic';
         } else {
-            return "Power law";
+            return 'Power law';
         }
     }
 
-    return ""
+    return '';
 }
 
 export default function AnalysisTab({
@@ -64,114 +57,89 @@ export default function AnalysisTab({
     calibratedState,
     showRegressionLine,
     setShowRegressionLine,
-    setDirty
+    onDirtyChanged,
 }: Props) {
-
     const modelType = getRegressionModelType(calibration);
 
-    return <ScrollView
-        style={styles.workspaceToolbarContainer}
-    >
-        <View style={styles.workspaceToolBackground}>
-            <View style={{ flex: 1 }}>
-
-                <View style={styles.datasetInfo}>
-                    <Text style={
-                        [
-                            {
-                                marginRight: 15
-                            },
-                        ]
-                    }>
-                        Selected:
-                    </Text>
-                    < View
-                        style={[
-                            {
-                                width: 10,
-                                height: 10,
-                                borderRadius: 5,
-                                marginRight: 8,
-                                backgroundColor: activeDataset?.colour,
-                            },
-                        ]}
-                    />
-                    <Text
-                        numberOfLines={1}
-                        ellipsizeMode="tail"
-                        style={{
-                            ...(TYPOGRAPHY.title as TextStyle),
-                            color: COLOURS.text,
-                            flexShrink: 1,
-                        }} >
-                        {activeDataset?.name ?? "None"}
-                    </Text>
-
-                </View>
-                {
-                    stats && (
-                        <Text>
-                            Points: {stats.count}
+    return (
+        <ScrollView style={styles.workspaceToolbarContainer}>
+            <View style={styles.workspaceToolBackground}>
+                <View style={{ flex: 1 }}>
+                    <View style={styles.datasetInfo}>
+                        <Text
+                            style={[
+                                {
+                                    marginRight: 15,
+                                },
+                            ]}
+                        >
+                            Selected:
                         </Text>
-                    )
-                }
+                        <View
+                            style={[
+                                {
+                                    width: 10,
+                                    height: 10,
+                                    borderRadius: 5,
+                                    marginRight: 8,
+                                    backgroundColor: activeDataset?.colour,
+                                },
+                            ]}
+                        />
+                        <Text
+                            numberOfLines={1}
+                            ellipsizeMode="tail"
+                            style={{
+                                ...(TYPOGRAPHY.title as TextStyle),
+                                color: COLOURS.text,
+                                flexShrink: 1,
+                            }}
+                        >
+                            {activeDataset?.name ?? 'None'}
+                        </Text>
+                    </View>
+                    {stats && <Text>Points: {stats.count}</Text>}
 
-                {
-                    stats && (
+                    {stats && (
                         <Text>
                             X range: {stats.minX.toFixed(2)} to {stats.maxX.toFixed(2)}
                         </Text>
-                    )
-                }
-                {
-                    stats && (
+                    )}
+                    {stats && (
                         <Text>
                             Y range: {stats.minY.toFixed(2)} to {stats.maxY.toFixed(2)}
                         </Text>
-                    )
-                }
+                    )}
 
-
-                {
-                    (!calibratedState) && (
-                        <View style={
-                            [
-                                styles.statusBarIndicator,
-                            ]
-                        }>
-                            <AppIcon
-                                name={"alert"}
-                                size={14}
-                                colour={'#d65910'}
-                            />
-                            <Text style={{ color: '#d65910' }}>
-                                (Calibration not set)
-                            </Text>
+                    {!calibratedState && (
+                        <View style={[styles.statusBarIndicator]}>
+                            <AppIcon name={'alert'} size={14} colour={'#d65910'} />
+                            <Text style={{ color: '#d65910' }}>(Calibration not set)</Text>
                         </View>
-                    )
-                }
+                    )}
 
-                {
-                    linearFit && (
-                        <View style={
-                            {
+                    {linearFit && (
+                        <View
+                            style={{
                                 flexDirection: 'column',
                                 marginTop: 6,
                                 justifyContent: 'space-between',
-                            }
-
-                        }>
-                            <Text>Best-fit equation — {modelType}{linearR2 != null ? `  (R² = ${linearR2.toFixed(4)})` : ""}:</Text>
-                            <View style={
-                                {
+                            }}
+                        >
+                            <Text>
+                                Best-fit equation — {modelType}
+                                {linearR2 != null ? `  (R² = ${linearR2.toFixed(4)})` : ''}:
+                            </Text>
+                            <View
+                                style={{
                                     flexDirection: 'row',
                                     alignItems: 'center',
                                     justifyContent: 'space-between',
                                     gap: 12,
-                                }
-                            }>
-                                <View style={
-                                    {
+                                }}
+                            >
+                                <View
+                                    style={{
                                         flex: 1,
                                         flexDirection: 'row',
                                         borderColor: '#c0c0c0',
@@ -180,77 +148,69 @@ export default function AnalysisTab({
                                         padding: 12,
                                         justifyContent: 'space-evenly',
                                         gap: 3,
-                                    }
-
-                                }>
+                                    }}
+                                >
                                     <Text>{formatRegressionEquation(linearFit, calibration)}</Text>
                                 </View>
 
-                                <View style={
-                                    {
+                                <View
+                                    style={{
                                         flexDirection: 'row',
                                         alignItems: 'center',
-                                    }
-                                }>
+                                    }}
+                                >
                                     <Text>Show</Text>
                                     <Switch
                                         value={showRegressionLine}
                                         onValueChange={() => {
-                                            setShowRegressionLine(prev => !prev)
-                                            setDirty(true)
-                                        }
-                                        }
+                                            setShowRegressionLine((prev) => !prev);
+                                            onDirtyChanged(true);
+                                        }}
                                     />
                                 </View>
                             </View>
-
-
                         </View>
-                    )
-                }
-            </View>
-
-
-            < View style={styles.controls} >
-                <View style={{ flex: 1 }}>
-                    <IconButton
-                        label="Export selected to CSV"
-                        onPress={async () => {
-                            if (!calibratedState) {
-                                alert("Not calibrated");
-                                return;
-                            }
-                            if (!activeDataset) {
-                                alert("No selected dataset");
-                                return;
-                            }
-                            const csv = generateSimpleCSV([activeDataset], calibration);
-                            await Clipboard.setStringAsync(csv);
-                            alert("Copied!");
-                        }}
-                    />
+                    )}
                 </View>
-                <View style={{ flex: 1 }}>
-                    < IconButton
-                        label="Export all to CSV"
-                        onPress={async () => {
-                            if (!calibratedState) {
-                                alert("Calibration incomplete");
-                                return;
-                            }
-                            const csv = generateSimpleCSV(datasets, calibration);
-                            await Clipboard.setStringAsync(csv);
-                            alert("Copied!");
-                        }}
-                    />
+
+                <View style={styles.controls}>
+                    <View style={{ flex: 1 }}>
+                        <IconButton
+                            label="Export selected to CSV"
+                            onPress={async () => {
+                                if (!calibratedState) {
+                                    alert('Not calibrated');
+                                    return;
+                                }
+                                if (!activeDataset) {
+                                    alert('No selected dataset');
+                                    return;
+                                }
+                                const csv = generateSimpleCSV([activeDataset], calibration);
+                                await Clipboard.setStringAsync(csv);
+                                alert('Copied!');
+                            }}
+                        />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                        <IconButton
+                            label="Export all to CSV"
+                            onPress={async () => {
+                                if (!calibratedState) {
+                                    alert('Calibration incomplete');
+                                    return;
+                                }
+                                const csv = generateSimpleCSV(datasets, calibration);
+                                await Clipboard.setStringAsync(csv);
+                                alert('Copied!');
+                            }}
+                        />
+                    </View>
                 </View>
             </View>
-        </View>
-    </ScrollView>
-
+        </ScrollView>
+    );
 }
-
-
 
 const styles = StyleSheet.create({
     workspaceToolbarContainer: {
@@ -286,4 +246,4 @@ const styles = StyleSheet.create({
         gap: 8,
         marginTop: 8,
     },
-})
+});

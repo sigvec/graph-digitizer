@@ -1,20 +1,15 @@
-import { File } from "expo-file-system";
+import { File } from 'expo-file-system';
 
-import type { SharedProject } from './SharedProject'
-import type { SharedProjectImage } from './SharedProject'
-import type { Project } from './Project'
+import type { SharedProject, SharedProjectImage } from './SharedProject';
+import type { Project } from './Project';
 
-
-export async function serializeImage(
-    uri: string
-): Promise<SharedProjectImage> {
-
+export async function serializeImage(uri: string): Promise<SharedProjectImage> {
     const file = new File(uri);
 
     const data = await file.base64();
 
     return {
-        mimeType: file.type || "application/octet-stream",
+        mimeType: file.type || 'application/octet-stream',
         data,
     };
 }
@@ -24,9 +19,7 @@ export async function serializeProject(project: Project): Promise<SharedProject>
         formatVersion: project.formatVersion,
         name: project.name,
         appVersion: project.appVersion,
-        image: project.image
-            ? await serializeImage(project.image)
-            : null,
+        image: project.image ? await serializeImage(project.image) : null,
 
         calibration: project.calibration,
         calibratedState: project.calibratedState,

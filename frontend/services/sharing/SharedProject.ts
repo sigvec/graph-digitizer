@@ -1,10 +1,10 @@
-import { Calibration } from '../../../app/calibration/types'
-import { Dataset } from '../../../app/datasets/types'
+import { Calibration } from '../../../app/calibration/types';
+import { Dataset } from '../../../app/datasets/types';
 
 export interface SharedProject {
     formatVersion: number;
-    name: string,
-    appVersion: string,
+    name: string;
+    appVersion: string;
     image: SharedProjectImage | null;
 
     calibration: Calibration;
@@ -17,7 +17,7 @@ export interface SharedProject {
         translateYscaled: number;
         activeDatasetId: string;
         showRegressionLine: boolean;
-    }
+    };
 }
 
 export interface SharedProjectImage {

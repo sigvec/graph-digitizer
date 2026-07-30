@@ -1,20 +1,19 @@
-import { transformPoint } from '../calibration/transform'
-import type { Calibration } from '../calibration/types'
-import type { Dataset } from '../datasets/types'
+import { transformPoint } from '../calibration/transform';
+import type { Calibration } from '../calibration/types';
+import type { Dataset } from '../datasets/types';
 
 export function generateSimpleCSV(datasets: Dataset[], calibration: Calibration): string {
-    let rows = ["series,x,y"];
+    let rows = ['series,x,y'];
 
-    datasets.forEach(d => {
-
+    datasets.forEach((d) => {
         const pts = [...d.points].sort((a, b) => a.x - b.x);
-        const transformed = pts.map(p => transformPoint(p, calibration)).filter(Boolean);
+        const transformed = pts.map((p) => transformPoint(p, calibration)).filter(Boolean);
 
         // raw data
-        transformed.forEach(p => {
+        transformed.forEach((p) => {
             p && rows.push(`${d.name},${p.x},${p.y},`);
         });
     });
 
-    return rows.join("\n");
+    return rows.join('\n');
 }

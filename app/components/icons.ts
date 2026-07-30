@@ -1,7 +1,4 @@
-import type { LucideIcon } from 'lucide-react-native'
-
-export type IconName = keyof typeof Icons;
-
+import type { LucideIcon } from 'lucide-react-native';
 import {
     Save,
     FolderOpen,
@@ -27,8 +24,6 @@ import {
     ArrowRight,
     ArrowUp,
     ArrowDown,
-    Focus,
-    Locate,
     LocateFixed,
     Palette,
     Pencil,
@@ -40,6 +35,8 @@ import {
     StepForward,
     StepBack,
 } from 'lucide-react-native';
+
+export type IconName = keyof typeof Icons;
 
 export const Icons = {
     save: Save,

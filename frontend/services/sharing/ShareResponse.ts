@@ -1,4 +1,3 @@
-
 export interface ShareResponse {
     shareId: string;
     createdAt: string;

@@ -1,70 +1,42 @@
-import {
-    Pressable,
-    StyleSheet,
-    Text,
-    View
-} from "react-native";
+import { Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
+import { COLOURS } from '../theme';
 
-import AppIcon from './AppIcon'
-import type { IconName } from "./icons";
+import AppIcon from './AppIcon';
+import type { IconName } from './icons';
 
 interface Props {
-    icon: IconName,
-    label: string,
-    onPress: () => void,
-    active: boolean,
+    icon: IconName;
+    label: string;
+    onPress: () => void;
+    active: boolean;
 }
 
-export default function TabButton({
-    icon,
-    label,
-    onPress,
-    active
-}: Props) {
-
+export default function TabButton({ icon, label, onPress, active }: Props) {
     return (
         <Pressable
             onPress={onPress}
             style={({ pressed }) => [
                 styles.button,
 
-                pressed &&
-                !active &&
-                styles.buttonPressed,
+                pressed && !active && styles.buttonPressed,
 
-                active &&
-                styles.buttonActive,
+                active && styles.buttonActive,
             ]}
         >
             {({ pressed }) => (
                 <>
-                    {
-                        icon && (
-                            <AppIcon name={icon} />
-                        )
-                    }
+                    {icon && <AppIcon name={icon} />}
 
-                    {icon && label && (
-                        <View style={styles.gap} />
+                    {icon && label && <View style={styles.gap} />}
+
+                    {label && (
+                        <Text
+                            style={[styles.buttonText, pressed && !active && styles.buttonPressed]}
+                        >
+                            {label}
+                        </Text>
                     )}
-
-                    {
-                        label && (
-                            <Text style={[
-                                styles.buttonText,
-
-                                pressed &&
-                                !active &&
-                                styles.buttonPressed,
-
-                            ]}
-                            >
-                                {label}
-                            </Text>
-                        )
-                    }
                 </>
             )}
         </Pressable>
@@ -96,8 +68,7 @@ const styles = StyleSheet.create({
         transform: [{ scale: 0.97 }],
     },
 
-    buttonText: {
-    },
+    buttonText: {},
 
     buttonActive: {
         opacity: 1,
@@ -108,4 +79,4 @@ const styles = StyleSheet.create({
     gap: {
         width: 8,
     },
-})
+});

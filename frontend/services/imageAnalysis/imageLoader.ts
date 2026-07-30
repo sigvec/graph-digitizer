@@ -1,9 +1,10 @@
 import { Skia, ColorType, AlphaType } from '@shopify/react-native-skia';
-import type { DecodedImage } from './types'
+import type { DecodedImage } from './types';
 
 export async function loadDecodedImage(imageUri: string | null): Promise<DecodedImage | null> {
-
-    if (!imageUri) { return null; }
+    if (!imageUri) {
+        return null;
+    }
 
     try {
         const data = await Skia.Data.fromURI(imageUri);
@@ -20,19 +21,19 @@ export async function loadDecodedImage(imageUri: string | null): Promise<Decoded
             width,
             height,
             colorType: ColorType.RGBA_8888,
-            alphaType: AlphaType.Unpremul
+            alphaType: AlphaType.Unpremul,
         });
 
         if (pixels === null) {
-            return null
+            return null;
         }
 
         if (!(pixels instanceof Uint8Array)) {
-            throw new Error("Unexpected pixel format.");
+            throw new Error('Unexpected pixel format.');
         }
 
         if (pixels.length !== width * height * 4) {
-            throw new Error("Unexpected pixel buffer size");
+            throw new Error('Unexpected pixel buffer size');
         }
 
         return {
@@ -40,10 +41,8 @@ export async function loadDecodedImage(imageUri: string | null): Promise<Decoded
             height,
             pixels,
         };
-    }
-    catch (err) {
-        console.error("Failed to load image", err);
+    } catch (err) {
+        console.error('Failed to load image', err);
         return null;
     }
-
 }

@@ -5,76 +5,59 @@ import ProjectListScreen from './app/screens/ProjectListScreen';
 import storage from './frontend/services/storage';
 
 export default function App() {
-    const [showProjectList, setShowProjectList] = useState(false);
-    const [loadedProject, setLoadedProject] = useState(null);
-    const [dirty, setDirty] = useState(false);
-
+    const [isProjectListVisible, setIsProjectListVisible] = useState(false);
+    const [incomingProject, setIncomingProject] = useState(null);
+    const [isDirty, setIsDirty] = useState(false);
     const [currentProjectId, setCurrentProjectId] = useState(null);
 
-    async function handleSelect(id) {
+    const loadProjectById = async (id) => {
+        try {
+            const project = await storage.loadProject(id);
+            setIncomingProject(project);
+            setIsProjectListVisible(false);
+        } catch (err) {
+            console.error('App failed to load project:', err);
+            Alert.alert('Error', 'Failed to load the selected project.');
+        }
+    };
 
-        if (dirty) {
-
-            Alert.alert(
-                'Unsaved Changes',
-                'Discard current project changes?',
-                [
-                    {
-                        text: 'Cancel',
-                        style: 'cancel',
+    const handleSelectProject = (id) => {
+        if (isDirty) {
+            Alert.alert('Unsaved Changes', 'Discard current project changes?', [
+                {
+                    text: 'Cancel',
+                    style: 'cancel',
+                },
+                {
+                    text: 'Discard',
+                    style: 'destructive',
+                    onPress: () => {
+                        void loadProjectById(id);
                     },
-                    {
-                        text: 'Discard',
-                        style: 'destructive',
-                        onPress: () => handleLoadProject(id)
-                    },
-                ]
-            );
+                },
+            ]);
 
             return;
         }
 
-        handleLoadProject(id)
-    }
-
-    async function handleLoadProject(id) {
-        try {
-            const project = await storage.loadProject(id);
-
-            setLoadedProject(project);
-            setShowProjectList(false);
-        } catch (err) {
-            console.error(err);
-        }
-    }
-
-    function handleOpenList() {
-        setShowProjectList(true);
-    }
-
-    function handleBack() {
-        setShowProjectList(false);
-    }
-
+        void loadProjectById(id);
+    };
 
     return (
         <>
             <MainScreen
-                currentId={currentProjectId}
+                currentProjectId={currentProjectId}
                 setCurrentProjectId={setCurrentProjectId}
-                onOpenList={handleOpenList}
-                loadedProject={loadedProject}
-                setLoadedProject={setLoadedProject}
-                dirty={dirty}
-                setDirty={setDirty}
+                onOpenList={() => setIsProjectListVisible(true)}
+                incomingProject={incomingProject}
+                setIncomingProject={setIncomingProject}
+                isDirty={isDirty}
+                onDirtyChanged={setIsDirty}
             />
-            <Modal
-                visible={showProjectList}
-                animationType="slide"
-            >
+            <Modal visible={isProjectListVisible} animationType="slide">
                 <ProjectListScreen
-                    onSelect={handleSelect}
-                    onBack={handleBack}
+                    onSelect={handleSelectProject}
+                    onBack={() => setIsProjectListVisible(false)}
                     currentId={currentProjectId}
                 />
             </Modal>

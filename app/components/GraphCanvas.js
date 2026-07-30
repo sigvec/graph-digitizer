@@ -1,36 +1,17 @@
 import React, { useEffect } from 'react';
-import {
-    View,
-    Image,
-    StyleSheet,
-    TouchableOpacity,
-    Text
-} from 'react-native';
-
-import {
-    Gesture,
-    GestureDetector,
-} from 'react-native-gesture-handler';
-
+import { View, Image, StyleSheet, TouchableOpacity, Text } from 'react-native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
     useAnimatedStyle,
     runOnJS,
     useSharedValue,
     useAnimatedProps,
 } from 'react-native-reanimated';
-
 import Svg, { Path } from 'react-native-svg';
-
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
-
-import {
-    LOGICAL_WIDTH,
-    LOGICAL_HEIGHT,
-} from '../constants/geometry';
-
-import { Axis } from '../calibration/constants'
-
-import AppIcon from './AppIcon'
+import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from '../theme';
+import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../constants/geometry';
+import { Axis } from '../calibration/constants';
+import AppIcon from './AppIcon';
 import { RegressionLine } from './RegressionLine';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
@@ -44,33 +25,29 @@ function generateSpline(points, segments = 20) {
     const result = [];
 
     for (let i = 0; i < points.length - 1; i++) {
-
         const p0 = points[Math.max(0, i - 1)];
         const p1 = points[i];
         const p2 = points[i + 1];
         const p3 = points[Math.min(points.length - 1, i + 2)];
 
         for (let j = 0; j < segments; j++) {
-
             const t = j / segments;
             const t2 = t * t;
             const t3 = t2 * t;
 
             const x =
-                0.5 * (
-                    (2 * p1.x) +
+                0.5 *
+                (2 * p1.x +
                     (-p0.x + p2.x) * t +
                     (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 +
-                    (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3
-                );
+                    (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
 
             const y =
-                0.5 * (
-                    (2 * p1.y) +
+                0.5 *
+                (2 * p1.y +
                     (-p0.y + p2.y) * t +
                     (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 +
-                    (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3
-                );
+                    (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
 
             result.push({ x, y });
         }
@@ -91,7 +68,6 @@ function pointsToPath(points, imageWidth, imageHeight, curveMode) {
     let curvePoints;
 
     switch (curveMode) {
-
         case 'none':
             return null;
 
@@ -108,9 +84,9 @@ function pointsToPath(points, imageWidth, imageHeight, curveMode) {
 
     return curvePoints.reduce((path, p, i) => {
         if (i === 0) {
-            return `M${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
+            return `M${(p.x * imageWidth) / LOGICAL_WIDTH} ${(p.y * imageHeight) / LOGICAL_HEIGHT}`;
         }
-        return `${path} L${p.x * imageWidth / LOGICAL_WIDTH} ${p.y * imageHeight / LOGICAL_HEIGHT}`;
+        return `${path} L${(p.x * imageWidth) / LOGICAL_WIDTH} ${(p.y * imageHeight) / LOGICAL_HEIGHT}`;
     }, '');
 }
 
@@ -124,7 +100,6 @@ function DraggableCalibrationPoint({
     sharedCalibrationPoints,
     onDragComplete,
 }) {
-
     const calibrationEnabled = mode !== 'points';
 
     const contextX = useSharedValue(0);
@@ -143,13 +118,25 @@ function DraggableCalibrationPoint({
             let translateX;
             let translateY;
 
-            if (calibrationType === 'origin' || calibrationType === 'x0' || calibrationType === 'x1') {
-                translateX = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
+            if (
+                calibrationType === 'origin' ||
+                calibrationType === 'x0' ||
+                calibrationType === 'x1'
+            ) {
+                translateX =
+                    contextX.value +
+                    (event.translationX * LOGICAL_WIDTH) / imageWidth / scale.value;
             } else {
                 translateX = sharedCalibrationPoints.value.origin.x;
             }
-            if (calibrationType === 'origin' || calibrationType === 'y0' || calibrationType === 'y1') {
-                translateY = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
+            if (
+                calibrationType === 'origin' ||
+                calibrationType === 'y0' ||
+                calibrationType === 'y1'
+            ) {
+                translateY =
+                    contextY.value +
+                    (event.translationY * LOGICAL_HEIGHT) / imageHeight / scale.value;
             } else {
                 translateY = contextY.value;
             }
@@ -165,59 +152,60 @@ function DraggableCalibrationPoint({
             };
 
             sharedCalibrationPoints.value = c;
-
         })
         .onEnd(() => {
-            runOnJS(onDragComplete)(calibrationType, sharedCalibrationPoints.value[calibrationType].x, sharedCalibrationPoints.value[calibrationType].y);
+            runOnJS(onDragComplete)(
+                calibrationType,
+                sharedCalibrationPoints.value[calibrationType].x,
+                sharedCalibrationPoints.value[calibrationType].y,
+            );
         });
-
 
     const RADIUS = 60;
 
     const containerStyle = {
-        position: "absolute",
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
+        position: 'absolute',
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
         borderRadius: RADIUS,
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: -RADIUS,
         marginTop: -RADIUS,
-    }
+    };
 
     const coreDot = {
-        position: "absolute",
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
-        borderRadius: (RADIUS),
+        position: 'absolute',
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
+        borderRadius: RADIUS,
         backgroundColor: colour,
         zIndex: 2,
-    }
+    };
 
     const outerRing = {
-        position: "absolute",
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
-        borderRadius: 1.5 * (RADIUS),
+        position: 'absolute',
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
+        borderRadius: 1.5 * RADIUS,
         borderWidth: 15,
-        backgroundColor: "#00000000",
+        backgroundColor: '#00000000',
         borderColor: 'white',
         zIndex: 3,
-    }
+    };
 
     const boundaryRing = {
-        position: "absolute",
-        width: 2.2 * (RADIUS),
-        height: 2.2 * (RADIUS),
-        borderRadius: 1.5 * (RADIUS),
+        position: 'absolute',
+        width: 2.2 * RADIUS,
+        height: 2.2 * RADIUS,
+        borderRadius: 1.5 * RADIUS,
         borderWidth: 35,
-        backgroundColor: "black",
+        backgroundColor: 'black',
         borderColor: 'black',
         zIndex: 1,
-    }
+    };
 
     const animatedProps = useAnimatedStyle(() => {
-
         let translateX;
         let translateY;
 
@@ -232,39 +220,30 @@ function DraggableCalibrationPoint({
             translateY = sharedCalibrationPoints.value.origin.y;
         }
 
-        const hide = (calibrationType === 'x0' && sharedCalibrationPoints.value.x0.x === null) || (calibrationType === 'y0' && sharedCalibrationPoints.value.y0.y === null)
+        const hide =
+            (calibrationType === 'x0' && sharedCalibrationPoints.value.x0.x === null) ||
+            (calibrationType === 'y0' && sharedCalibrationPoints.value.y0.y === null);
 
-        return (
-            {
-                transform: [
-                    { translateX: translateX * imageWidth / LOGICAL_WIDTH },
-                    { translateY: translateY * imageHeight / LOGICAL_HEIGHT },
-                    { scale: 0.1 / scale.value }
-                ],
-                opacity: hide ? 0 : 1
-            }
-        )
+        return {
+            transform: [
+                { translateX: (translateX * imageWidth) / LOGICAL_WIDTH },
+                { translateY: (translateY * imageHeight) / LOGICAL_HEIGHT },
+                { scale: 0.1 / scale.value },
+            ],
+            opacity: hide ? 0 : 1,
+        };
     });
 
     return (
         <GestureDetector gesture={panGesture}>
-            <Animated.View style={[
-                containerStyle,
-                animatedProps,
-            ]}>
-                <View style={[
-                    coreDot,
-                ]} />
-                {mode !== 'points' &&
+            <Animated.View style={[containerStyle, animatedProps]}>
+                <View style={[coreDot]} />
+                {mode !== 'points' && (
                     <>
-                        <View style={[
-                            outerRing,
-                        ]} />
-                        <View style={[
-                            boundaryRing,
-                        ]} />
+                        <View style={[outerRing]} />
+                        <View style={[boundaryRing]} />
                     </>
-                }
+                )}
             </Animated.View>
         </GestureDetector>
     );
@@ -280,11 +259,6 @@ function AnimatedCalibrationAxis({
     imageHeight,
     onDragComplete,
 }) {
-
-    if (!sharedCalibrationPoints) {
-        return { d: '' };
-    }
-
     const calibrationEnabled = mode !== 'points';
 
     const contextX = useSharedValue(0);
@@ -292,7 +266,7 @@ function AnimatedCalibrationAxis({
 
     const SLOP = 5;
 
-    const calibrationPoint = 'origin'
+    const calibrationPoint = 'origin';
 
     const panGesture = Gesture.Pan()
         .enabled(calibrationEnabled)
@@ -307,52 +281,70 @@ function AnimatedCalibrationAxis({
             };
 
             if (calibrationAxis === Axis.X) {
-                const translateY = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
+                const translateY =
+                    contextY.value +
+                    (event.translationY * LOGICAL_HEIGHT) / imageHeight / scale.value;
                 c[calibrationPoint] = {
                     ...c[calibrationPoint],
-                    y: translateY
+                    y: translateY,
                 };
             } else {
-                const translateX = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
+                const translateX =
+                    contextX.value +
+                    (event.translationX * LOGICAL_WIDTH) / imageWidth / scale.value;
                 c[calibrationPoint] = {
                     ...c[calibrationPoint],
-                    x: translateX
+                    x: translateX,
                 };
             }
 
             sharedCalibrationPoints.value = c;
-
         })
         .onEnd(() => {
-            runOnJS(onDragComplete)(calibrationPoint, sharedCalibrationPoints.value[calibrationPoint].x, sharedCalibrationPoints.value[calibrationPoint].y);
+            runOnJS(onDragComplete)(
+                calibrationPoint,
+                sharedCalibrationPoints.value[calibrationPoint].x,
+                sharedCalibrationPoints.value[calibrationPoint].y,
+            );
         });
 
     const animatedStyleContainer = useAnimatedStyle(() => {
-
         const strokeWidth = 4 / scale.value;
         const c = sharedCalibrationPoints.value;
-        const X0 = calibrationAxis === 'X' ? 0 : c[calibrationPoint].x * imageWidth / LOGICAL_WIDTH - 2 * strokeWidth;
-        const X1 = calibrationAxis === 'X' ? imageWidth : c[calibrationPoint].x * imageWidth / LOGICAL_WIDTH + 2 * strokeWidth;
-        const Y0 = calibrationAxis === 'X' ? c[calibrationPoint].y * imageHeight / LOGICAL_HEIGHT - 2 * strokeWidth : 0;
-        const Y1 = calibrationAxis === 'X' ? c[calibrationPoint].y * imageHeight / LOGICAL_HEIGHT + 2 * strokeWidth : imageHeight;
+        const X0 =
+            calibrationAxis === 'X'
+                ? 0
+                : (c[calibrationPoint].x * imageWidth) / LOGICAL_WIDTH - 2 * strokeWidth;
+        const X1 =
+            calibrationAxis === 'X'
+                ? imageWidth
+                : (c[calibrationPoint].x * imageWidth) / LOGICAL_WIDTH + 2 * strokeWidth;
+        const Y0 =
+            calibrationAxis === 'X'
+                ? (c[calibrationPoint].y * imageHeight) / LOGICAL_HEIGHT - 2 * strokeWidth
+                : 0;
+        const Y1 =
+            calibrationAxis === 'X'
+                ? (c[calibrationPoint].y * imageHeight) / LOGICAL_HEIGHT + 2 * strokeWidth
+                : imageHeight;
 
         return {
-            position: "absolute",
+            position: 'absolute',
             left: X0,
             top: Y0,
             width: X1 - X0,
             height: Y1 - Y0,
-            backgroundColor: '#00000000'
+            backgroundColor: '#00000000',
         };
     });
 
     const lineStyle = {
-        position: "absolute",
-        left: calibrationAxis === 'X' ? "0%" : "37.5%",
-        top: calibrationAxis === 'X' ? "37.5%" : "0%",
-        width: calibrationAxis === 'X' ? "100%" : "25%",
-        height: calibrationAxis === 'X' ? "25%" : "100%",
-        backgroundColor: colour
+        position: 'absolute',
+        left: calibrationAxis === 'X' ? '0%' : '37.5%',
+        top: calibrationAxis === 'X' ? '37.5%' : '0%',
+        width: calibrationAxis === 'X' ? '100%' : '25%',
+        height: calibrationAxis === 'X' ? '25%' : '100%',
+        backgroundColor: colour,
     };
 
     return (
@@ -362,7 +354,6 @@ function AnimatedCalibrationAxis({
             </Animated.View>
         </GestureDetector>
     );
-
 }
 
 function DraggablePoint({
@@ -391,7 +382,7 @@ function DraggablePoint({
 
     const SLOP = 50;
 
-    const isEnabled = (!datasetIsLocked && datasetIsActive && mode === 'points')
+    const isEnabled = !datasetIsLocked && datasetIsActive && mode === 'points';
     const panGesture = Gesture.Pan()
         .enabled(isEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
@@ -403,149 +394,123 @@ function DraggablePoint({
                 datasetId: datasetId,
                 pointId: item.id,
             });
-
         })
         .onUpdate((event) => {
-            translateX.value = contextX.value + event.translationX * LOGICAL_WIDTH / imageWidth / scale.value;
-            translateY.value = contextY.value + event.translationY * LOGICAL_HEIGHT / imageHeight / scale.value;
+            translateX.value =
+                contextX.value + (event.translationX * LOGICAL_WIDTH) / imageWidth / scale.value;
+            translateY.value =
+                contextY.value + (event.translationY * LOGICAL_HEIGHT) / imageHeight / scale.value;
 
-            sharedDatasetPoints.modify(value => {
+            sharedDatasetPoints.modify((value) => {
                 value[datasetIndex][pointIndex] = {
                     x: translateX.value,
                     y: translateY.value,
                 };
                 return value;
             });
-
         })
         .onEnd(() => {
             runOnJS(onDragComplete)(item.id, translateX.value, translateY.value);
         });
 
-
     const RADIUS = 40;
 
     const containerStyle = {
-        position: "absolute",
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
+        position: 'absolute',
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
         borderRadius: RADIUS,
         justifyContent: 'center',
         alignItems: 'center',
         marginLeft: -RADIUS,
         marginTop: -RADIUS,
-        opacity: mode !== 'points' ? 0.4
-            : datasetIsLocked ? 0.8 : 1,
-    }
+        opacity: mode !== 'points' ? 0.4 : datasetIsLocked ? 0.8 : 1,
+    };
 
     const ring = {
-        position: "absolute",
-        borderRadius: 999
-    }
+        position: 'absolute',
+        borderRadius: 999,
+    };
 
     const coreDot = {
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
         backgroundColor: colour,
         zIndex: 1,
-    }
+    };
 
     const innerRing = {
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
         borderWidth: isSelected ? 28 : 18,
-        backgroundColor: "#00000000",
+        backgroundColor: '#00000000',
         borderColor: 'white',
         zIndex: 2,
-    }
+    };
 
     const outerRing = {
-        width: 2 * (RADIUS),
-        height: 2 * (RADIUS),
+        width: 2 * RADIUS,
+        height: 2 * RADIUS,
         borderWidth: 6,
-        backgroundColor: "#00000000",
+        backgroundColor: '#00000000',
         borderColor: 'black',
         zIndex: 3,
-    }
+    };
 
     const animatedProps = useAnimatedStyle(() => ({
         transform: [
-            { translateX: translateX.value * imageWidth / LOGICAL_WIDTH },
-            { translateY: translateY.value * imageHeight / LOGICAL_HEIGHT },
-            { scale: 0.1 / scale.value }
+            { translateX: (translateX.value * imageWidth) / LOGICAL_WIDTH },
+            { translateY: (translateY.value * imageHeight) / LOGICAL_HEIGHT },
+            { scale: 0.1 / scale.value },
         ],
     }));
 
     const cursorHorProps = useAnimatedStyle(() => ({
-        position: "absolute",
+        position: 'absolute',
         left: 0,
-        top: translateY.value * imageHeight / LOGICAL_HEIGHT - 1 / scale.value,
+        top: (translateY.value * imageHeight) / LOGICAL_HEIGHT - 1 / scale.value,
         width: imageWidth,
         height: 2 / scale.value,
-        backgroundColor: "#535353",
+        backgroundColor: '#535353',
         opacity: 0.2,
-
     }));
 
     const cursorVerProps = useAnimatedStyle(() => ({
-        position: "absolute",
-        left: translateX.value * imageWidth / LOGICAL_HEIGHT - 1 / scale.value,
+        position: 'absolute',
+        left: (translateX.value * imageWidth) / LOGICAL_HEIGHT - 1 / scale.value,
         top: 0,
         width: 2 / scale.value,
         height: imageHeight,
-        backgroundColor: "#535353",
+        backgroundColor: '#535353',
         opacity: 0.2,
-
     }));
 
     useEffect(() => {
         // If the parent state changes externally, sync the shared values
         translateX.value = item.x;
         translateY.value = item.y;
-    }, [item.x, item.y]);
+    }, [item.x, item.y, translateX, translateY]);
 
     return (
-
         <>
-            {isSelected && (<>
-                {/* Horizontal line */}
-                <Animated.View
-                    style={[
-                        cursorHorProps
-                    ]}
-                />
+            {isSelected && (
+                <>
+                    {/* Horizontal line */}
+                    <Animated.View style={[cursorHorProps]} />
 
-                {/* Vertical line */}
-                <Animated.View
-                    style={[
-                        cursorVerProps
-                    ]}
-                />
-            </>
+                    {/* Vertical line */}
+                    <Animated.View style={[cursorVerProps]} />
+                </>
             )}
 
             <GestureDetector gesture={panGesture}>
-                <Animated.View style={[
-                    containerStyle,
-                    animatedProps,
-                ]}>
-
-
-                    <View style={[
-                        ring,
-                        coreDot,
-                    ]} />
+                <Animated.View style={[containerStyle, animatedProps]}>
+                    <View style={[ring, coreDot]} />
 
                     {datasetIsActive && (
                         <>
-                            <View style={[
-                                ring,
-                                innerRing
-                            ]} />
-                            <View style={[
-                                ring,
-                                outerRing
-                            ]} />
+                            <View style={[ring, innerRing]} />
+                            <View style={[ring, outerRing]} />
                         </>
                     )}
                 </Animated.View>
@@ -561,12 +526,10 @@ function AnimatedDatasetPath({
     imageHeight,
     curveMode,
     colour,
-    scale
+    scale,
 }) {
-
     const animatedProps = useAnimatedProps(() => {
-        const points =
-            sharedDatasetPoints.value[datasetIndex];
+        const points = sharedDatasetPoints.value[datasetIndex];
         if (!points || points.length < 2) {
             return { d: '' };
         }
@@ -575,17 +538,11 @@ function AnimatedDatasetPath({
 
         return {
             strokeWidth: 3 / scale.value,
-            d: d
+            d: d,
         };
     });
 
-    return (
-        <AnimatedPath
-            animatedProps={animatedProps}
-            stroke={colour}
-            fill="none"
-        />
-    );
+    return <AnimatedPath animatedProps={animatedProps} stroke={colour} fill="none" />;
 }
 
 export default function GraphCanvas(props) {
@@ -620,24 +577,18 @@ export default function GraphCanvas(props) {
         setViewportSize,
 
         setZoomDisplay,
-
     } = props;
 
     // ---------- gestures ----------
-    const lastScale = useSharedValue(1);
 
     // Dynamic values to anchor the exact scaling focal point
     const focalX = useSharedValue(0);
     const focalY = useSharedValue(0);
 
-    const fitScale = Math.min(
-        displaySize.width / imageWidth,
-        displaySize.height / imageHeight
-    );
+    const fitScale = Math.min(displaySize.width / imageWidth, displaySize.height / imageHeight);
 
     const maxScale = fitScale * 10;
     const minScale = fitScale * 0.5;
-
 
     const pan = Gesture.Pan()
         .onStart((e) => {
@@ -663,12 +614,9 @@ export default function GraphCanvas(props) {
             const centeredFocalX = e.focalX - displaySize.width / 2;
             const centeredFocalY = e.focalY - displaySize.height / 2;
 
-            focalX.value =
-                (centeredFocalX - savedTranslateX.value) / savedScale.value;
+            focalX.value = (centeredFocalX - savedTranslateX.value) / savedScale.value;
 
-            focalY.value =
-                (centeredFocalY - savedTranslateY.value) / savedScale.value;
-
+            focalY.value = (centeredFocalY - savedTranslateY.value) / savedScale.value;
         })
 
         .onUpdate((e) => {
@@ -681,8 +629,14 @@ export default function GraphCanvas(props) {
             const scaleRatio = newScale / savedScale.value;
 
             // 3. Adjust the layout translation cleanly based on the locked anchor point
-            translateX.value = scaleRatio + savedTranslateX.value + savedScale.value * (focalX.value * (1 - scaleRatio));
-            translateY.value = scaleRatio + savedTranslateY.value + savedScale.value * (focalY.value * (1 - scaleRatio));
+            translateX.value =
+                scaleRatio +
+                savedTranslateX.value +
+                savedScale.value * (focalX.value * (1 - scaleRatio));
+            translateY.value =
+                scaleRatio +
+                savedTranslateY.value +
+                savedScale.value * (focalY.value * (1 - scaleRatio));
         })
         .onEnd(() => {
             savedScale.value = scale.value;
@@ -692,7 +646,6 @@ export default function GraphCanvas(props) {
             runOnJS(setZoomDisplay)(scale.value / fitScale);
         });
 
-
     const tap = Gesture.Tap()
         .maxDistance(6)
         .maxDuration(250)
@@ -701,15 +654,14 @@ export default function GraphCanvas(props) {
             const centeredY = e.y - displaySize.height / 2;
 
             const x =
-                (centeredX - translateX.value) / scale.value * LOGICAL_WIDTH / imageWidth +
+                (((centeredX - translateX.value) / scale.value) * LOGICAL_WIDTH) / imageWidth +
                 LOGICAL_WIDTH / 2;
 
             const y =
-                (centeredY - translateY.value) / scale.value * LOGICAL_HEIGHT / imageHeight +
+                (((centeredY - translateY.value) / scale.value) * LOGICAL_HEIGHT) / imageHeight +
                 LOGICAL_HEIGHT / 2;
 
             runOnJS(addPoint)(x, y);
-
         });
 
     const composed = Gesture.Simultaneous(pan, pinch, tap);
@@ -722,11 +674,18 @@ export default function GraphCanvas(props) {
         ],
     }));
 
-    const sharedCalibrationPoints = useSharedValue([]);
+    const sharedCalibrationPoints = useSharedValue({
+        origin: { x: 0, y: 0 },
+
+        x0: { x: 0, y: null },
+        x1: { x: 0, y: null },
+
+        y0: { x: null, y: 0 },
+        y1: { x: null, y: 0 },
+    });
 
     useEffect(() => {
-        sharedCalibrationPoints.value =
-        {
+        sharedCalibrationPoints.value = {
             origin: { x: calibration.origin.x, y: calibration.origin.y },
 
             x0: { x: calibration.x.p0, y: null },
@@ -734,125 +693,105 @@ export default function GraphCanvas(props) {
 
             y0: { x: null, y: calibration.y.p0 },
             y1: { x: null, y: calibration.y.p1 },
-        }
-    }, [calibration]);
+        };
+    }, [calibration, sharedCalibrationPoints]);
 
     const sharedDatasets = useSharedValue([]);
 
     useEffect(() => {
-        sharedDatasets.value =
-            datasets.map(dataset =>
-                dataset.points.map(point => ({
-                    x: point.x,
-                    y: point.y,
-                }))
-            );
-    }, [datasets]);
+        sharedDatasets.value = datasets.map((dataset) =>
+            dataset.points.map((point) => ({
+                x: point.x,
+                y: point.y,
+            })),
+        );
+    }, [datasets, sharedDatasets]);
 
     return (
         <View
             style={styles.canvasViewport}
-            onLayout={e => {
+            onLayout={(e) => {
                 const { width, height } = e.nativeEvent.layout;
 
                 setViewportSize({ width: width, height: height });
             }}
         >
             {!image && (
-                <TouchableOpacity style={[
-                    styles.emptyWorkspace,
-                    !storageReady && { opacity: 0.3 }
-                ]
-                } onPress={pickImage}
+                <TouchableOpacity
+                    style={[styles.emptyWorkspace, !storageReady && { opacity: 0.3 }]}
+                    onPress={pickImage}
                 >
-                    <AppIcon
-                        name={"add"}
-                        size={48}
-                        colour={COLOURS.buttonIcon}
-                    />
+                    <AppIcon name={'add'} size={48} colour={COLOURS.buttonIcon} />
 
-                    <Text style={styles.emptyTitle}>
-                        Import a graph image
-                    </Text>
+                    <Text style={styles.emptyTitle}>Import a graph image</Text>
 
                     <Text style={styles.emptySubtitle}>
                         Start digitizing by selecting an image.
                     </Text>
-
                 </TouchableOpacity>
             )}
             {image && (!imageWidth || !imageHeight) && (
-                <TouchableOpacity style={[
-                    styles.emptyWorkspace,
-                    !storageReady && { opacity: 0.3 }
-                ]
-                } onPress={pickImage}
+                <TouchableOpacity
+                    style={[styles.emptyWorkspace, !storageReady && { opacity: 0.3 }]}
+                    onPress={pickImage}
                 >
+                    <AppIcon name={'add'} size={48} colour={COLOURS.buttonIcon} />
 
-                    <AppIcon
-                        name={"add"}
-                        size={48}
-                        colour={COLOURS.buttonIcon}
-                    />
-
-                    <Text
-                        numberOfLines={1}
-                        ellipsizeMode="middle"
-                        style={styles.warningText}
-                    >
+                    <Text numberOfLines={1} ellipsizeMode="middle" style={styles.warningText}>
                         Couldn't load the image file.
                     </Text>
 
-                    <Text style={styles.emptySubtitle}>
-                        Please select an alternative image.
-                    </Text>
-
+                    <Text style={styles.emptySubtitle}>Please select an alternative image.</Text>
                 </TouchableOpacity>
             )}
             {image && imageWidth && imageHeight && (
                 <>
                     <GestureDetector gesture={composed}>
-                        <View style={
-                            [
+                        <View
+                            style={[
                                 styles.imageContainer,
                                 {
                                     width: displaySize.width,
                                     height: displaySize.height,
-                                }
-
-                            ]
-                        }>
+                                },
+                            ]}
+                        >
                             <Animated.View style={animatedImageStyle}>
-                                <Image source={{ uri: image }} style={
-                                    [
+                                <Image
+                                    source={{ uri: image }}
+                                    style={[
                                         {
                                             width: imageWidth,
                                             height: imageHeight,
-                                        }
-                                    ]
-                                } />
-
-                                <AnimatedCalibrationAxis
-                                    sharedCalibrationPoints={sharedCalibrationPoints}
-                                    calibrationAxis={'X'}
-                                    mode={currentMode}
-                                    colour={'green'}
-                                    scale={scale}
-                                    imageWidth={imageWidth}
-                                    imageHeight={imageHeight}
-                                    onDragComplete={finishCalibrationDragTransaction}
+                                        },
+                                    ]}
                                 />
 
-                                <AnimatedCalibrationAxis
-                                    sharedCalibrationPoints={sharedCalibrationPoints}
-                                    calibrationAxis={'Y'}
-                                    mode={currentMode}
-                                    colour={'orange'}
-                                    scale={scale}
-                                    imageWidth={imageWidth}
-                                    imageHeight={imageHeight}
-                                    onDragComplete={finishCalibrationDragTransaction}
-                                />
+                                {sharedCalibrationPoints && (
+                                    <>
+                                        <AnimatedCalibrationAxis
+                                            sharedCalibrationPoints={sharedCalibrationPoints}
+                                            calibrationAxis={'X'}
+                                            mode={currentMode}
+                                            colour={'green'}
+                                            scale={scale}
+                                            imageWidth={imageWidth}
+                                            imageHeight={imageHeight}
+                                            onDragComplete={finishCalibrationDragTransaction}
+                                        />
+
+                                        <AnimatedCalibrationAxis
+                                            sharedCalibrationPoints={sharedCalibrationPoints}
+                                            calibrationAxis={'Y'}
+                                            mode={currentMode}
+                                            colour={'orange'}
+                                            scale={scale}
+                                            imageWidth={imageWidth}
+                                            imageHeight={imageHeight}
+                                            onDragComplete={finishCalibrationDragTransaction}
+                                        />
+                                    </>
+                                )}
 
                                 <DraggableCalibrationPoint
                                     calibrationType={'origin'}
@@ -865,7 +804,7 @@ export default function GraphCanvas(props) {
                                     onDragComplete={finishCalibrationDragTransaction}
                                 />
 
-                                {calibration.x.p0 &&
+                                {calibration.x.p0 && (
                                     <DraggableCalibrationPoint
                                         calibrationType={'x0'}
                                         mode={currentMode}
@@ -876,9 +815,9 @@ export default function GraphCanvas(props) {
                                         sharedCalibrationPoints={sharedCalibrationPoints}
                                         onDragComplete={finishCalibrationDragTransaction}
                                     />
-                                }
+                                )}
 
-                                {calibration.y.p0 &&
+                                {calibration.y.p0 && (
                                     <DraggableCalibrationPoint
                                         calibrationType={'y0'}
                                         mode={currentMode}
@@ -889,7 +828,7 @@ export default function GraphCanvas(props) {
                                         sharedCalibrationPoints={sharedCalibrationPoints}
                                         onDragComplete={finishCalibrationDragTransaction}
                                     />
-                                }
+                                )}
 
                                 <DraggableCalibrationPoint
                                     calibrationType={'x1'}
@@ -913,85 +852,78 @@ export default function GraphCanvas(props) {
                                     onDragComplete={finishCalibrationDragTransaction}
                                 />
 
-                                {showRegressionLine && regression && transformedActive.length >= 2 && <Svg
-                                    style={[
-                                        StyleSheet.absoluteFill
-                                    ]}
-                                >
-                                    <RegressionLine
-                                        points={transformedActive}
-                                        regression={regression}
-                                        calibration={calibration}
-                                        imageWidth={imageWidth}
-                                        imageHeight={imageHeight}
-                                        colour={"gray"}
-                                        scale={scale}
-                                    />
-                                </Svg>
-                                }
+                                {showRegressionLine &&
+                                    regression != null &&
+                                    regression.intercept != null &&
+                                    regression.slope != null &&
+                                    transformedActive.length >= 2 && (
+                                        <Svg style={[StyleSheet.absoluteFill]}>
+                                            <RegressionLine
+                                                points={transformedActive}
+                                                regression={regression}
+                                                calibration={calibration}
+                                                imageWidth={imageWidth}
+                                                imageHeight={imageHeight}
+                                                colour={'gray'}
+                                                scale={scale}
+                                            />
+                                        </Svg>
+                                    )}
 
-                                {datasets
-                                    .map((d, datasetIndex) => {
-
-                                        if (!d.visible || d.curveMode == 'none' || (d?.points?.length ?? 0) < 2) {
-                                            return null;
-                                        }
-
-                                        return (
-                                            <Svg
-                                                key={d.id}
-                                                style={[
-                                                    StyleSheet.absoluteFill
-                                                ]}
-                                            >
-                                                <AnimatedDatasetPath
-                                                    datasetIndex={datasetIndex}
-                                                    sharedDatasetPoints={sharedDatasets}
-                                                    imageWidth={imageWidth}
-                                                    imageHeight={imageHeight}
-                                                    curveMode={d.curveMode}
-                                                    colour={d.colour}
-                                                    scale={scale}
-                                                />
-                                            </Svg>
-
-                                        )
+                                {datasets.map((d, datasetIndex) => {
+                                    if (
+                                        !d.visible ||
+                                        d.curveMode === 'none' ||
+                                        (d?.points?.length ?? 0) < 2
+                                    ) {
+                                        return null;
                                     }
 
-                                    )
-                                }
-                                {datasets
-                                    .map((d, datasetIndex) => (d.points || [])
-                                        .map((p, pointIndex) => {
-                                            if (!d.visible) {
-                                                return null;
-                                            }
-                                            const datasetIsActive = activeDatasetId === d.id;
-                                            const isSelected =
-                                                selectedPointRef?.datasetId === d.id &&
-                                                selectedPointRef?.pointId === p.id;
-                                            return (
-                                                <DraggablePoint
-                                                    key={p.id}
-                                                    pointIndex={pointIndex}
-                                                    datasetIndex={datasetIndex}
-                                                    mode={currentMode}
-                                                    item={p}
-                                                    colour={d.colour}
-                                                    isSelected={isSelected}
-                                                    datasetId={d.id}
-                                                    datasetIsActive={datasetIsActive}
-                                                    datasetIsLocked={d.locked}
-                                                    scale={scale}
-                                                    imageWidth={imageWidth}
-                                                    imageHeight={imageHeight}
-                                                    sharedDatasetPoints={sharedDatasets}
-                                                    onDragComplete={finishDragTransaction}
-                                                    setSelectedPointRef={setSelectedPointRef}
-                                                />
-                                            )
-                                        })
-                                    )}
+                                    return (
+                                        <Svg key={d.id} style={[StyleSheet.absoluteFill]}>
+                                            <AnimatedDatasetPath
+                                                datasetIndex={datasetIndex}
+                                                sharedDatasetPoints={sharedDatasets}
+                                                imageWidth={imageWidth}
+                                                imageHeight={imageHeight}
+                                                curveMode={d.curveMode}
+                                                colour={d.colour}
+                                                scale={scale}
+                                            />
+                                        </Svg>
+                                    );
+                                })}
+                                {datasets.map((d, datasetIndex) =>
+                                    (d.points || []).map((p, pointIndex) => {
+                                        if (!d.visible) {
+                                            return null;
+                                        }
+                                        const datasetIsActive = activeDatasetId === d.id;
+                                        const isSelected =
+                                            selectedPointRef?.datasetId === d.id &&
+                                            selectedPointRef?.pointId === p.id;
+                                        return (
+                                            <DraggablePoint
+                                                key={p.id}
+                                                pointIndex={pointIndex}
+                                                datasetIndex={datasetIndex}
+                                                mode={currentMode}
+                                                item={p}
+                                                colour={d.colour}
+                                                isSelected={isSelected}
+                                                datasetId={d.id}
+                                                datasetIsActive={datasetIsActive}
+                                                datasetIsLocked={d.locked}
+                                                scale={scale}
+                                                imageWidth={imageWidth}
+                                                imageHeight={imageHeight}
+                                                sharedDatasetPoints={sharedDatasets}
+                                                onDragComplete={finishDragTransaction}
+                                                setSelectedPointRef={setSelectedPointRef}
+                                            />
+                                        );
+                                    }),
+                                )}
                             </Animated.View>
                         </View>
                     </GestureDetector>
@@ -1000,7 +932,6 @@ export default function GraphCanvas(props) {
         </View>
     );
 }
-
 
 const styles = StyleSheet.create({
     imageContainer: {
@@ -1037,5 +968,4 @@ const styles = StyleSheet.create({
         color: 'red',
         textAlign: 'center',
     },
-
 });

@@ -1,34 +1,28 @@
-import React from "react";
-import {
-    View,
-    StyleSheet,
-    Text,
-    ScrollView,
-    TouchableOpacity,
-} from "react-native";
+import React from 'react';
+import { View, StyleSheet, Text, ScrollView, TouchableOpacity } from 'react-native';
 
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../../theme";
-import IconButton from '../IconButton';
-import { DatasetActionButton } from '../IconButton'
-import type { Dataset } from "../../datasets/types";
-import type { Point } from "../../types/geometry";
+import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
+import IconButton, { DatasetActionButton } from '../IconButton';
+import type { Dataset } from '../../datasets/types';
 
 interface Props {
-    activeDatasetId: string,
-    setActiveDatasetId: React.Dispatch<React.SetStateAction<string>>,
-    activeDataset: Dataset,
-    setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>,
-    datasets: Dataset[],
-    setDirty: React.Dispatch<React.SetStateAction<boolean>>,
-    toggleCurveVisibility: (id: string) => void,
-    toggleDatasetVisibility: (id: string) => void,
-    toggleDatasetLock: (id: string) => void,
-    handleDeleteDataset: () => void,
-    handleRenameDataset: () => void,
-    setColourPickerVisible: React.Dispatch<React.SetStateAction<boolean>>,
-    createDuplicateDataset: (daaset: Dataset) => Dataset,
-    createEmptyDataset: (count: number) => Dataset,
-    setSelectedPointRef: React.Dispatch<React.SetStateAction<{ datasetId: string, pointId: string } | null>>,
+    activeDatasetId: string;
+    setActiveDatasetId: React.Dispatch<React.SetStateAction<string>>;
+    activeDataset: Dataset;
+    setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
+    datasets: Dataset[];
+    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+    toggleCurveVisibility: (id: string) => void;
+    toggleDatasetVisibility: (id: string) => void;
+    toggleDatasetLock: (id: string) => void;
+    handleDeleteDataset: () => void;
+    handleRenameDataset: () => void;
+    setColourPickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    createDuplicateDataset: (daaset: Dataset) => Dataset;
+    createEmptyDataset: (count: number) => Dataset;
+    setSelectedPointRef: React.Dispatch<
+        React.SetStateAction<{ datasetId: string; pointId: string } | null>
+    >;
 }
 
 export default function DatasetsTab({
@@ -37,7 +31,7 @@ export default function DatasetsTab({
     activeDataset,
     setDatasets,
     datasets,
-    setDirty,
+    onDirtyChanged,
     toggleCurveVisibility,
     toggleDatasetVisibility,
     toggleDatasetLock,
@@ -48,177 +42,142 @@ export default function DatasetsTab({
     createEmptyDataset,
     setSelectedPointRef,
 }: Props) {
+    return (
+        <View style={styles.datasetTabContainer}>
+            <ScrollView
+                style={styles.datasetList}
+                contentContainerStyle={{
+                    paddingVertical: 1,
+                }}
+            >
+                {datasets.map((d) => {
+                    const isActive = d.id === activeDatasetId;
+                    const rowOpacity = d.visible ? (d.locked ? 0.7 : 1) : 0.4;
 
-
-    return <View style={styles.datasetTabContainer}>
-
-        <ScrollView
-            style={styles.datasetList}
-            contentContainerStyle={{
-                paddingVertical: 1,
-            }}
-        >
-
-            {datasets.map(d => {
-                const isActive = d.id === activeDatasetId;
-                const rowOpacity =
-                    d.visible
-                        ? (d.locked ? 0.7 : 1)
-                        : 0.4;
-
-                return <TouchableOpacity
-                    key={d.id}
-                    onPress={() => {
-                        if (!isActive) {
-                            setActiveDatasetId(d.id)
-                            setSelectedPointRef(null)
-                        }
-                    }
-                    }
-                    style={[
-                        styles.datasetRow,
-                        {
-                            opacity: rowOpacity,
-                        },
-                        d.id === activeDatasetId &&
-                        styles.activeDatasetRow,
-                    ]}
-                >
-
-                    <View style={styles.datasetInfo}>
-                        <View
+                    return (
+                        <TouchableOpacity
+                            key={d.id}
+                            onPress={() => {
+                                if (!isActive) {
+                                    setActiveDatasetId(d.id);
+                                    setSelectedPointRef(null);
+                                }
+                            }}
                             style={[
-                                styles.datasetColourDot,
+                                styles.datasetRow,
                                 {
-                                    backgroundColor: d.colour,
+                                    opacity: rowOpacity,
                                 },
+                                d.id === activeDatasetId && styles.activeDatasetRow,
                             ]}
-                        />
-
-                        <Text
-                            style={styles.datasetName}
                         >
-                            {d.name}
-                        </Text>
+                            <View style={styles.datasetInfo}>
+                                <View
+                                    style={[
+                                        styles.datasetColourDot,
+                                        {
+                                            backgroundColor: d.colour,
+                                        },
+                                    ]}
+                                />
 
-                    </View>
+                                <Text style={styles.datasetName}>{d.name}</Text>
+                            </View>
 
-                    <View style={styles.datasetOptions}>
+                            <View style={styles.datasetOptions}>
+                                <IconButton
+                                    icon={
+                                        d.curveMode === 'none'
+                                            ? 'hideCurve'
+                                            : d.curveMode === 'linear'
+                                              ? 'showCurveLine'
+                                              : 'showCurveSpline'
+                                    }
+                                    onPress={() => {
+                                        toggleCurveVisibility(d.id);
+                                        onDirtyChanged(true);
+                                    }}
+                                />
+                                <IconButton
+                                    icon={d.visible ? 'visible' : 'notVisible'}
+                                    onPress={() => {
+                                        toggleDatasetVisibility(d.id);
+                                        onDirtyChanged(true);
+                                    }}
+                                />
+                                <IconButton
+                                    icon={d.locked ? 'locked' : 'notLocked'}
+                                    onPress={() => {
+                                        toggleDatasetLock(d.id);
+                                        onDirtyChanged(true);
+                                    }}
+                                />
+                            </View>
+                        </TouchableOpacity>
+                    );
+                })}
+            </ScrollView>
 
-                        <IconButton
-                            icon={d.curveMode === 'none' ? 'hideCurve' : d.curveMode === 'linear' ? 'showCurveLine' : 'showCurveSpline'}
-                            onPress={() => {
-                                toggleCurveVisibility(d.id)
-                                setDirty(true)
-                            }
-                            }
-                        />
-                        <IconButton
-                            icon={d.visible ? 'visible' : 'notVisible'}
-                            onPress={() => {
-                                toggleDatasetVisibility(d.id)
-                                setDirty(true)
-                            }
-                            }
-                        />
-                        <IconButton
-                            icon={d.locked ? 'locked' : 'notLocked'}
-                            onPress={() => {
-                                toggleDatasetLock(d.id)
-                                setDirty(true)
-                            }
-                            }
-                        />
+            <View style={styles.datasetToolbar}>
+                <View style={styles.toolBarButton}>
+                    <DatasetActionButton icon="edit" label="Rename" onPress={handleRenameDataset} />
+                </View>
 
+                <View style={styles.toolBarButton}>
+                    <DatasetActionButton
+                        icon="palette"
+                        label="Colour"
+                        onPress={() => setColourPickerVisible(true)}
+                    />
+                </View>
 
-                    </View>
-                </TouchableOpacity>
+                <View style={styles.toolBarButton}>
+                    <DatasetActionButton
+                        icon="duplicate"
+                        label="Duplicate"
+                        onPress={() => {
+                            const duplicateDataset = createDuplicateDataset(activeDataset);
 
-            })}
-        </ScrollView>
+                            setDatasets((prev) => [...prev, duplicateDataset]);
 
-        <View style={styles.datasetToolbar}>
+                            setActiveDatasetId(duplicateDataset.id);
 
+                            setSelectedPointRef(null);
 
-            <View style={styles.toolBarButton}>
-                <DatasetActionButton
-                    icon="edit"
-                    label="Rename"
-                    onPress={handleRenameDataset}
-                />
+                            onDirtyChanged(true);
+                        }}
+                    />
+                </View>
+
+                <View style={styles.toolBarButton}>
+                    <DatasetActionButton
+                        icon="delete"
+                        label="Delete"
+                        onPress={handleDeleteDataset}
+                    />
+                </View>
+
+                <View style={styles.toolBarButton}>
+                    <DatasetActionButton
+                        icon="add"
+                        label="New"
+                        onPress={() => {
+                            const newDataset = createEmptyDataset(datasets.length);
+
+                            setDatasets((prev) => [...prev, newDataset]);
+
+                            setActiveDatasetId(newDataset.id);
+
+                            setSelectedPointRef(null);
+
+                            onDirtyChanged(true);
+                        }}
+                    />
+                </View>
             </View>
-
-            <View style={styles.toolBarButton}>
-                <DatasetActionButton
-                    icon="palette"
-                    label="Colour"
-                    onPress={() => setColourPickerVisible(true)}
-                />
-            </View>
-
-            <View style={styles.toolBarButton}>
-                <DatasetActionButton
-                    icon="duplicate"
-                    label="Duplicate"
-                    onPress={() => {
-
-                        const duplicateDataset = createDuplicateDataset(activeDataset);
-
-                        setDatasets(prev => [
-                            ...prev,
-                            duplicateDataset,
-                        ]);
-
-                        setActiveDatasetId(
-                            duplicateDataset.id
-                        );
-
-                        setSelectedPointRef(null);
-
-                        setDirty(true)
-
-                    }}
-                />
-            </View>
-
-            <View style={styles.toolBarButton}>
-                <DatasetActionButton
-                    icon="delete"
-                    label="Delete"
-                    onPress={handleDeleteDataset}
-                />
-            </View>
-
-            <View style={styles.toolBarButton}>
-                <DatasetActionButton
-                    icon="add"
-                    label="New"
-                    onPress={() => {
-
-                        const newDataset = createEmptyDataset(datasets.length);
-
-                        setDatasets(prev => [
-                            ...prev,
-                            newDataset,
-                        ]);
-
-                        setActiveDatasetId(
-                            newDataset.id
-                        );
-
-                        setSelectedPointRef(null);
-
-                        setDirty(true)
-
-                    }}
-                />
-            </View>
-
         </View>
-
-    </View>
+    );
 }
-
 
 const styles = StyleSheet.create({
     workspaceToolContainer: {
@@ -238,19 +197,18 @@ const styles = StyleSheet.create({
     },
 
     axisInputs: {
-        flexDirection: "row",
+        flexDirection: 'row',
         gap: 8,
         alignItems: 'center',
-        justifyContent: 'center'
+        justifyContent: 'center',
     },
 
     input: {
-        //borderWidth: 1,
         borderBottomWidth: 1,
         padding: 5,
         width: 100,
         textAlign: 'right',
-        backgroundColor: 'white'
+        backgroundColor: 'white',
     },
 
     calibrationRow: {
@@ -283,7 +241,6 @@ const styles = StyleSheet.create({
         paddingHorizontal: SPACING.lg,
         borderRadius: 10,
     },
-
 
     workspaceToolbarContainer: {
         flex: 1,
@@ -363,4 +320,4 @@ const styles = StyleSheet.create({
     toolBarButton: {
         flex: 1,
     },
-})
+});

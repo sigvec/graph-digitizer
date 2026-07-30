@@ -33,9 +33,7 @@ function extensionFromMimeType(mimeType?: string | null): string {
     }
 }
 
-function extensionFromFilename(
-    filename: string | null | undefined
-): string | undefined {
+function extensionFromFilename(filename: string | null | undefined): string | undefined {
     if (!filename) {
         return undefined;
     }
@@ -53,17 +51,14 @@ function generateFilename(extension: string): string {
     return `${uuid()}.${extension}`;
 }
 
-export async function copyToLocal(
-    asset: ImagePickerAsset
-): Promise<StoredImage> {
+export async function copyToLocal(asset: ImagePickerAsset): Promise<StoredImage> {
     imageDirectory.create({
         idempotent: true,
         intermediates: true,
     });
 
     const extension =
-        extensionFromFilename(asset.fileName) ??
-        extensionFromMimeType(asset.mimeType);
+        extensionFromFilename(asset.fileName) ?? extensionFromMimeType(asset.mimeType);
 
     const filename = generateFilename(extension);
 
@@ -82,28 +77,25 @@ export async function copyToLocal(
     };
 }
 
-export async function saveImageDataToLocal(
-    imageData: SharedProjectImage
-): Promise<StoredImage> {
+export async function saveImageDataToLocal(imageData: SharedProjectImage): Promise<StoredImage> {
     imageDirectory.create({
         idempotent: true,
         intermediates: true,
     });
 
-    const extension =
-        extensionFromFilename(imageData.mimeType) ?? "jpg";
+    const extension = extensionFromFilename(imageData.mimeType) ?? 'jpg';
 
     const filename = generateFilename(extension);
 
     const destination = new File(imageDirectory, filename);
 
     destination.write(imageData.data, {
-        encoding: "base64",
+        encoding: 'base64',
     });
 
     try {
         destination.write(imageData.data, {
-            encoding: "base64",
+            encoding: 'base64',
         });
     } catch (error) {
         throw new Error(`Failed to copy image: ${String(error)}`);
@@ -115,9 +107,7 @@ export async function saveImageDataToLocal(
     };
 }
 
-export async function removeOrphanedImages(
-    projects: ProjectWithImage[]
-): Promise<void> {
+export async function removeOrphanedImages(projects: ProjectWithImage[]): Promise<void> {
     const referenced = new Set<string>();
 
     for (const project of projects) {

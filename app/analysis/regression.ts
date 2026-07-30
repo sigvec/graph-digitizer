@@ -1,13 +1,16 @@
-import type { Point } from '../types/geometry'
+import type { Point } from '../types/geometry';
 import type { LinearRegressionResult, Predictor } from './types';
 
 export function linearRegression(points: Point[]): LinearRegressionResult | null {
     if (points.length < 2) return null;
 
     let n = points.length;
-    let sumX = 0, sumY = 0, sumXY = 0, sumXX = 0;
+    let sumX = 0,
+        sumY = 0,
+        sumXY = 0,
+        sumXX = 0;
 
-    points.forEach(p => {
+    points.forEach((p) => {
         sumX += p.x;
         sumY += p.y;
         sumXY += p.x * p.y;
@@ -26,13 +29,12 @@ export function linearRegression(points: Point[]): LinearRegressionResult | null
 export function computeR2(points: Point[], predictY: Predictor): number | null {
     if (points.length < 2) return null;
 
-    const meanY =
-        points.reduce((sum, p) => sum + p.y, 0) / points.length;
+    const meanY = points.reduce((sum, p) => sum + p.y, 0) / points.length;
 
     let ssTot = 0;
     let ssRes = 0;
 
-    points.forEach(p => {
+    points.forEach((p) => {
         const yHat = predictY(p.x);
         ssTot += (p.y - meanY) ** 2;
         ssRes += (p.y - yHat) ** 2;

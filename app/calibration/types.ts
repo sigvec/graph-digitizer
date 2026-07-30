@@ -1,5 +1,4 @@
-import { AxisScale } from "../calibration/constants";
-import { Point } from "../types/geometry";
+import { AxisScale } from '../calibration/constants';
 
 export interface axisCalibration {
     scaleType: AxisScale;
@@ -11,7 +10,7 @@ export interface axisCalibration {
 }
 
 export interface Calibration {
-    origin: { x: number, y: number };
+    origin: { x: number; y: number };
     x: axisCalibration;
     y: axisCalibration;
 }

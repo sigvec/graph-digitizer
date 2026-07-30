@@ -1,17 +1,9 @@
-import type { ReactNode } from "react";
-import {
-    StyleProp,
-    ViewStyle,
-    Pressable,
-    StyleSheet,
-    Text,
-    View,
-} from "react-native";
+import { StyleProp, ViewStyle, Pressable, StyleSheet, Text, View } from 'react-native';
 
-import { COLOURS, SPACING, RADIUS, TYPOGRAPHY } from "../theme";
+import { COLOURS } from '../theme';
 
-import AppIcon from './AppIcon'
-import type { IconName } from "./icons";
+import AppIcon from './AppIcon';
+import type { IconName } from './icons';
 
 interface IconButtonProps {
     icon?: IconName;
@@ -30,13 +22,9 @@ export default function IconButton({
     selected = false,
     alert = false,
     disabled = false,
-    style = null
+    style = null,
 }: IconButtonProps) {
-
-    const iconColour =
-        disabled
-            ? COLOURS.buttonIconInactive
-            : COLOURS.buttonIcon
+    const iconColour = disabled ? COLOURS.buttonIconInactive : COLOURS.buttonIcon;
 
     return (
         <Pressable
@@ -45,62 +33,38 @@ export default function IconButton({
                 styles.button,
                 style,
 
-                pressed &&
-                !disabled &&
-                styles.buttonPressed,
+                pressed && !disabled && styles.buttonPressed,
 
                 !selected && styles.buttonNormal,
-                selected && styles.buttonSelected
+                selected && styles.buttonSelected,
             ]}
         >
-
             {icon && (
-                <View style={
-                    [
-                        label && styles.iconContainer,
-                        disabled && styles.buttonDisabled,
-                    ]
-                }>
-                    <AppIcon
-                        name={icon}
-                        colour={iconColour}
-                    />
+                <View style={[label && styles.iconContainer, disabled && styles.buttonDisabled]}>
+                    <AppIcon name={icon} colour={iconColour} />
                 </View>
             )}
 
-            {icon && label && (
-                <View style={styles.gap} />
-            )}
+            {icon && label && <View style={styles.gap} />}
 
             {label && (
-                <Text style={[
-                    styles.buttonText,
-                    selected && styles.buttonTextSelected,
+                <Text
+                    style={[
+                        styles.buttonText,
+                        selected && styles.buttonTextSelected,
 
-                    disabled &&
-                    styles.buttonDisabled,
-
-                ]}
+                        disabled && styles.buttonDisabled,
+                    ]}
                 >
                     {label}
                 </Text>
             )}
-
         </Pressable>
     );
 }
 
-
-export function DatasetActionButton({
-    style,
-    ...props
-}: IconButtonProps) {
-    return (
-        <IconButton
-            {...props}
-            style={[styles.datasetButton, style]}
-        />
-    );
+export function DatasetActionButton({ style, ...props }: IconButtonProps) {
+    return <IconButton {...props} style={[styles.datasetButton, style]} />;
 }
 
 const styles = StyleSheet.create({
@@ -140,8 +104,7 @@ const styles = StyleSheet.create({
         transform: [{ scale: 0.97 }],
     },
 
-    buttonText: {
-    },
+    buttonText: {},
 
     buttonTextSelected: {
         color: '#ffffff',
@@ -151,10 +114,9 @@ const styles = StyleSheet.create({
         opacity: 0.4,
     },
 
-    iconContainer: {
-    },
+    iconContainer: {},
 
     gap: {
         width: 6,
     },
-})
+});

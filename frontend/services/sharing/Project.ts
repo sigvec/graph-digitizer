@@ -1,5 +1,5 @@
-import { Calibration } from '../../../app/calibration/types'
-import { Dataset } from '../../../app/datasets/types'
+import { Calibration } from '../../../app/calibration/types';
+import { Dataset } from '../../../app/datasets/types';
 import { CurveMode } from '../../../app/datasets/constants';
 import { Point } from '../../../app/types/geometry';
 
@@ -7,7 +7,7 @@ export interface Project {
     id: string | null;
     formatVersion: number;
     name: string;
-    appVersion: string,
+    appVersion: string;
     image: string | null;
     datasetCount: number;
 
@@ -15,9 +15,9 @@ export interface Project {
     calibratedState: boolean;
     datasets: Dataset[];
     lastShare?: {
-        shareId: string,
-        sharedAt: string
-    }
+        shareId: string;
+        sharedAt: string;
+    };
     uiState: {
         mode: string;
         zoomDisplay: number;
@@ -25,26 +25,25 @@ export interface Project {
         translateYscaled: number;
         activeDatasetId: string;
         showRegressionLine: boolean;
-    }
+    };
 }
-
 
 interface StoredDataset {
     id: string;
-    name: string,
+    name: string;
     colour: string;
-    visible: boolean,
-    locked: boolean,
-    curveMode: CurveMode,
-    rawPoints: Point[],
-    transformedPoints: (Point | null)[]
+    visible: boolean;
+    locked: boolean;
+    curveMode: CurveMode;
+    rawPoints: Point[];
+    transformedPoints: (Point | null)[];
 }
 
 export interface StoredProject {
     id: string;
     formatVersion: number;
     name: string;
-    appVersion: string,
+    appVersion: string;
     image: string | null;
     datasetCount: number;
 
@@ -52,9 +51,9 @@ export interface StoredProject {
     calibratedState: boolean;
     datasets: StoredDataset[];
     lastShare?: {
-        shareId: string,
-        sharedAt: string
-    }
+        shareId: string;
+        sharedAt: string;
+    };
     uiState: {
         mode: string;
         zoomDisplay: number;
@@ -62,7 +61,7 @@ export interface StoredProject {
         translateYscaled: number;
         activeDatasetId: string;
         showRegressionLine: boolean;
-    }
+    };
     updatedAt: string;
     createdAt: string;
-};
+}
