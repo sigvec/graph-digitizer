@@ -1,4 +1,4 @@
-import { Calibration, axisCalibration } from '../../../../app/calibration/types';
+import { Calibration, AxisCalibration } from '../../../../app/calibration/types';
 import { transformPoint } from '../../../../app/calibration/transform';
 
 import { AxisScale } from '../../../../app/calibration/constants';
@@ -7,7 +7,7 @@ describe('Graph Coordinate Transformation Layer', () => {
     // Test Case 1: Linear Transformation
     test('correctly converts linear scale pixels to graph units', () => {
         // 400 pixel wide canvas area
-        const mockXCalibrtionLinear: axisCalibration = {
+        const mockXCalibrtionLinear: AxisCalibration = {
             scaleType: AxisScale.LINEAR,
             p0: 100,
             p1: 500,
@@ -17,7 +17,7 @@ describe('Graph Coordinate Transformation Layer', () => {
         };
 
         // Canvas inverted Y axis
-        const mockYCalibrtionLinear: axisCalibration = {
+        const mockYCalibrtionLinear: AxisCalibration = {
             scaleType: AxisScale.LINEAR,
             p0: 500,
             p1: 100,
@@ -43,7 +43,7 @@ describe('Graph Coordinate Transformation Layer', () => {
     // Test Case 2: Logarithmic Transformation
 
     // 400 pixel wide canvas area
-    const mockXCalibrtionLog: axisCalibration = {
+    const mockXCalibrtionLog: AxisCalibration = {
         scaleType: AxisScale.LOG,
         p0: 0,
         p1: 100,
@@ -53,7 +53,7 @@ describe('Graph Coordinate Transformation Layer', () => {
     };
 
     // Canvas inverted Y axis
-    const mockYCalibrtionLinear: axisCalibration = {
+    const mockYCalibrtionLinear: AxisCalibration = {
         scaleType: AxisScale.LINEAR,
         p0: 100,
         p1: 0,

@@ -43,6 +43,24 @@ import { useGraphInteraction } from '../hooks/useGraphInteraction';
 import { useDatasetState } from '../hooks/useDatasetState';
 import { useProjectManager } from '../hooks/useProjectManager';
 
+function getImageSize(uri) {
+    return new Promise((resolve, reject) => {
+        Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
+    });
+}
+
+function createEmptyDataset(index = 0) {
+    return {
+        id: generateId(),
+        name: `Curve ${index + 1}`,
+        colour: DATASET_COLOURS[index % DATASET_COLOURS.length],
+        visible: true,
+        locked: false,
+        curveMode: 'none',
+        points: [],
+    };
+}
+
 export default function MainScreen({
     currentProjectId,
     setCurrentProjectId,
@@ -69,18 +87,6 @@ export default function MainScreen({
     const [imageWidth, setImageWidth] = useState(null);
     const [imageHeight, setImageHeight] = useState(null);
     const [selectedPointRef, setSelectedPointRef] = useState(null);
-
-    function createEmptyDataset(index = 0) {
-        return {
-            id: generateId(),
-            name: `Curve ${index + 1}`,
-            colour: DATASET_COLOURS[index % DATASET_COLOURS.length],
-            visible: true,
-            locked: false,
-            curveMode: 'none',
-            points: [],
-        };
-    }
 
     const [datasets, setDatasets] = useState([createEmptyDataset(0)]);
     const [activeDatasetId, setActiveDatasetId] = useState(datasets[0].id);
@@ -121,12 +127,6 @@ export default function MainScreen({
             translateYscaled: height > 0 ? translateY.value / height : 0,
         };
     };
-
-    function getImageSize(uri) {
-        return new Promise((resolve, reject) => {
-            Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
-        });
-    }
 
     const displaySize = {
         width: Math.max(0, viewportSize.width - DISPLAY_PADDING * 2),
@@ -188,8 +188,8 @@ export default function MainScreen({
     // --------------------------------------------------
     const {
         addPoint,
-        finishDragTransaction,
-        finishCalibrationDragTransaction,
+        commitPointDrag,
+        commitCalibrationDrag,
         getSelectedPointData,
         handleDeletePoint,
         nudgePoint,
@@ -202,7 +202,7 @@ export default function MainScreen({
         activeDatasetId,
         setActiveDatasetId,
         activeDataset,
-        decodedImage,
+        decodedImage: decodedImage.current,
         calibration,
         setCalibration,
         setCalibratedState,
@@ -623,8 +623,8 @@ export default function MainScreen({
                                 regression={linearFit}
                                 showRegressionLine={showRegressionLine}
                                 setSelectedPointRef={setSelectedPointRef}
-                                finishDragTransaction={finishDragTransaction}
-                                finishCalibrationDragTransaction={finishCalibrationDragTransaction}
+                                commitPointDrag={commitPointDrag}
+                                commitCalibrationDrag={commitCalibrationDrag}
                                 addPoint={addPoint}
 
                                 scale={scale}

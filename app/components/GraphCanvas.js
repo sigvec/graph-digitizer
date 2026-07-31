@@ -560,8 +560,8 @@ export default function GraphCanvas(props) {
         regression,
         showRegressionLine,
         setSelectedPointRef,
-        finishDragTransaction,
-        finishCalibrationDragTransaction,
+        commitPointDrag,
+        commitCalibrationDrag,
         addPoint,
 
         scale,
@@ -777,7 +777,7 @@ export default function GraphCanvas(props) {
                                             scale={scale}
                                             imageWidth={imageWidth}
                                             imageHeight={imageHeight}
-                                            onDragComplete={finishCalibrationDragTransaction}
+                                            onDragComplete={commitCalibrationDrag}
                                         />
 
                                         <AnimatedCalibrationAxis
@@ -788,7 +788,7 @@ export default function GraphCanvas(props) {
                                             scale={scale}
                                             imageWidth={imageWidth}
                                             imageHeight={imageHeight}
-                                            onDragComplete={finishCalibrationDragTransaction}
+                                            onDragComplete={commitCalibrationDrag}
                                         />
                                     </>
                                 )}
@@ -801,7 +801,7 @@ export default function GraphCanvas(props) {
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
                                     sharedCalibrationPoints={sharedCalibrationPoints}
-                                    onDragComplete={finishCalibrationDragTransaction}
+                                    onDragComplete={commitCalibrationDrag}
                                 />
 
                                 {calibration.x.p0 && (
@@ -813,7 +813,7 @@ export default function GraphCanvas(props) {
                                         imageWidth={imageWidth}
                                         imageHeight={imageHeight}
                                         sharedCalibrationPoints={sharedCalibrationPoints}
-                                        onDragComplete={finishCalibrationDragTransaction}
+                                        onDragComplete={commitCalibrationDrag}
                                     />
                                 )}
 
@@ -826,7 +826,7 @@ export default function GraphCanvas(props) {
                                         imageWidth={imageWidth}
                                         imageHeight={imageHeight}
                                         sharedCalibrationPoints={sharedCalibrationPoints}
-                                        onDragComplete={finishCalibrationDragTransaction}
+                                        onDragComplete={commitCalibrationDrag}
                                     />
                                 )}
 
@@ -838,7 +838,7 @@ export default function GraphCanvas(props) {
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
                                     sharedCalibrationPoints={sharedCalibrationPoints}
-                                    onDragComplete={finishCalibrationDragTransaction}
+                                    onDragComplete={commitCalibrationDrag}
                                 />
 
                                 <DraggableCalibrationPoint
@@ -849,7 +849,7 @@ export default function GraphCanvas(props) {
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
                                     sharedCalibrationPoints={sharedCalibrationPoints}
-                                    onDragComplete={finishCalibrationDragTransaction}
+                                    onDragComplete={commitCalibrationDrag}
                                 />
 
                                 {showRegressionLine &&
@@ -918,7 +918,7 @@ export default function GraphCanvas(props) {
                                                 imageWidth={imageWidth}
                                                 imageHeight={imageHeight}
                                                 sharedDatasetPoints={sharedDatasets}
-                                                onDragComplete={finishDragTransaction}
+                                                onDragComplete={commitPointDrag}
                                                 setSelectedPointRef={setSelectedPointRef}
                                             />
                                         );

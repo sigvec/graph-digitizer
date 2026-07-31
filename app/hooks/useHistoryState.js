@@ -32,6 +32,8 @@ export function useHistoryState({
     );
 
     useEffect(() => {
+        // Suppress history commits while state is being restored
+        // (project loading, undo/redo, image restoration).
         if (isRestoringHistory || isProcessingProject) {
             return;
         }

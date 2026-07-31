@@ -1,7 +1,5 @@
 import { useRef } from 'react';
-
 import { Platform, Alert } from 'react-native';
-
 import * as ImagePicker from 'expo-image-picker';
 
 import storage from '../../frontend/services/storage';
@@ -9,7 +7,6 @@ import { copyToLocal } from '../../frontend/services/storage/imageStorage';
 import { shareProject } from '../../frontend/services/sharing/shareProject';
 import { importProject } from '../../frontend/services/sharing/importProject';
 import { transformPoint } from '../calibration/transform';
-
 import { DEFAULT_CALIBRATION } from '../constants/geometry';
 
 import Constants from 'expo-constants';
