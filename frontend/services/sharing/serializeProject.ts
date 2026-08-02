@@ -19,8 +19,8 @@ export async function serializeProject(project: Project): Promise<SharedProject>
         formatVersion: project.formatVersion,
         name: project.name,
         appVersion: project.appVersion,
+        device: project.device,
         image: project.image ? await serializeImage(project.image) : null,
-
         calibration: project.calibration,
         calibratedState: project.calibratedState,
         datasets: project.datasets,

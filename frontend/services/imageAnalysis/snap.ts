@@ -1,6 +1,12 @@
 import type { DecodedImage } from './types';
 
-export function snapVector(image: DecodedImage, lx: number, ly: number) {
+export function snapVector(
+    image: DecodedImage,
+    lx: number,
+    ly: number,
+    fitScale: number,
+    zoom: number,
+) {
     if (!image || !lx || !ly) return null;
 
     const width = image.width;
@@ -13,9 +19,8 @@ export function snapVector(image: DecodedImage, lx: number, ly: number) {
 
     const pixel = (x + y * width) * 4;
 
-    const searchRadius = 10;
-    const sampleRadius = 5;
-
+    const searchRadius = Math.min(Math.round(10 * fitScale * zoom), 24);
+    const sampleRadius = Math.min(Math.round(2 * fitScale), 8);
     const searchXMin = Math.max(0, x - searchRadius) - x;
     const searchXMax = Math.min(width - 1, x + searchRadius) - x;
     const searchYMin = Math.max(0, y - searchRadius) - y;

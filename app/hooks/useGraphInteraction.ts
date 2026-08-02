@@ -144,6 +144,7 @@ interface useGraphInteractionProps {
         React.SetStateAction<{ datasetId: string; pointId: string } | null>
     >;
     setActiveDatasetId: React.Dispatch<React.SetStateAction<string>>;
+    fitScale: number;
     zoomDisplay: number;
     nudgeAllPoints: boolean;
     onDirtyChanged: (newValue: boolean) => void;
@@ -162,6 +163,7 @@ export function useGraphInteraction({
     selectedPointRef,
     setSelectedPointRef,
     setActiveDatasetId,
+    fitScale,
     zoomDisplay,
     nudgeAllPoints,
     onDirtyChanged,
@@ -195,7 +197,7 @@ export function useGraphInteraction({
                 const dx = p.x - x;
                 const dy = p.y - y;
 
-                // Avoid unnecessary Math.sqrt execution on rendering threads
+                // Avoid unnecessary Math.sqrt execution
                 const dist = Math.sqrt(dx * dx + dy * dy);
 
                 if (dist <= searchRadius) {
@@ -267,7 +269,13 @@ export function useGraphInteraction({
         const addedPointId = generateId();
         const addedPointRef = { datasetId: activeDatasetId, pointId: addedPointId };
 
-        const nudgeVec = snapVector(decodedImage, x / LOGICAL_WIDTH, y / LOGICAL_HEIGHT);
+        const nudgeVec = snapVector(
+            decodedImage,
+            x / LOGICAL_WIDTH,
+            y / LOGICAL_HEIGHT,
+            1 / (fitScale || 1),
+            1 / (zoomDisplay || 1),
+        );
         const nudgeX = (nudgeVec?.dx ?? 0) * LOGICAL_WIDTH;
         const nudgeY = (nudgeVec?.dy ?? 0) * LOGICAL_HEIGHT;
         const newPoint = { id: addedPointId, x: x + nudgeX, y: y + nudgeY };

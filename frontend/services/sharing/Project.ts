@@ -1,34 +1,8 @@
-import { Calibration } from '../../../app/calibration/types';
-import { Dataset } from '../../../app/datasets/types';
+import type { Calibration } from '../../../app/calibration/types';
+import type { Point } from '../../../app/types/geometry';
 import { CurveMode } from '../../../app/datasets/constants';
-import { Point } from '../../../app/types/geometry';
 
-export interface Project {
-    id: string | null;
-    formatVersion: number;
-    name: string;
-    appVersion: string;
-    image: string | null;
-    datasetCount: number;
-
-    calibration: Calibration;
-    calibratedState: boolean;
-    datasets: Dataset[];
-    lastShare?: {
-        shareId: string;
-        sharedAt: string;
-    };
-    uiState: {
-        mode: string;
-        zoomDisplay: number;
-        translateXscaled: number;
-        translateYscaled: number;
-        activeDatasetId: string;
-        showRegressionLine: boolean;
-    };
-}
-
-interface StoredDataset {
+export interface StoredDataset {
     id: string;
     name: string;
     colour: string;
@@ -39,14 +13,16 @@ interface StoredDataset {
     transformedPoints: (Point | null)[];
 }
 
-export interface StoredProject {
-    id: string;
+export interface Project {
     formatVersion: number;
     name: string;
     appVersion: string;
+    device: {
+        platform: string;
+        version: string | number;
+    };
     image: string | null;
     datasetCount: number;
-
     calibration: Calibration;
     calibratedState: boolean;
     datasets: StoredDataset[];
@@ -62,6 +38,10 @@ export interface StoredProject {
         activeDatasetId: string;
         showRegressionLine: boolean;
     };
+}
+
+export interface StoredProject extends Project {
+    id: string;
     updatedAt: string;
     createdAt: string;
 }

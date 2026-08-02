@@ -6,14 +6,84 @@ import storage from '../../frontend/services/storage';
 import { copyToLocal } from '../../frontend/services/storage/imageStorage';
 import { shareProject } from '../../frontend/services/sharing/shareProject';
 import { importProject } from '../../frontend/services/sharing/importProject';
+import type { Project, StoredProject } from '../../frontend/services/sharing/Project';
+import { ShareResponse } from '../../frontend/services/sharing/ShareResponse';
 import { transformPoint } from '../calibration/transform';
 import { DEFAULT_CALIBRATION } from '../constants/geometry';
+import type { Dataset } from '../datasets/types';
+import { createEmptyDataset } from './useDatasetState';
+import type { Calibration } from '../calibration/types';
 
 import Constants from 'expo-constants';
 const APP_VERSION = Constants.expoConfig?.version ?? '0.4.1';
 const PROJECT_FORMAT_VERSION = 1;
 
-export function useProjectManager({ projectPayload, savedUiPreferences, storageLifecycle }) {
+interface ProjectPayload {
+    datasets: Dataset[];
+    setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
+    calibration: Calibration;
+    setCalibration: React.Dispatch<React.SetStateAction<Calibration>>;
+    projectName: string;
+    setProjectName: React.Dispatch<React.SetStateAction<string>>;
+    image: string;
+    setProjectImage: (
+        uri: string | null,
+        zoom?: number,
+        xTranslation?: number,
+        yTranslation?: number,
+    ) => void;
+    setProjectCreatedAt: React.Dispatch<React.SetStateAction<string>>;
+    setProjectUpdatedAt: React.Dispatch<React.SetStateAction<string>>;
+    currentProjectId: string;
+    setCurrentProjectId: React.Dispatch<React.SetStateAction<string | null>>;
+}
+
+interface SavedUiPreferences {
+    mode: string;
+    setMode: React.Dispatch<React.SetStateAction<string>>;
+    zoomDisplay: number;
+    setZoomDisplay: React.Dispatch<React.SetStateAction<number>>;
+    showRegressionLine: boolean;
+    setShowRegressionLine: React.Dispatch<React.SetStateAction<boolean>>;
+    calibratedState: boolean;
+    setCalibratedState: React.Dispatch<React.SetStateAction<boolean>>;
+    lastShare: { shareId: string; sharedAt: string };
+    setLastShare: React.Dispatch<
+        React.SetStateAction<{ shareId: string; sharedAt: string } | undefined>
+    >;
+    setWorkspaceTab: React.Dispatch<React.SetStateAction<string>>;
+}
+
+interface StorageLifecycle {
+    storageReady: boolean;
+    setIncomingProject: (project: StoredProject) => void;
+    setIsLoadingProject: React.Dispatch<React.SetStateAction<boolean>>;
+    setDialog: (share: {
+        type: string | null;
+        title?: string;
+        share?: ShareResponse;
+        name?: string;
+        message?: string;
+    }) => void;
+    isDirty: boolean;
+    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+    resetHistory: (baseSnapshotString: string) => void;
+    setActiveDatasetId: React.Dispatch<React.SetStateAction<string | null>>;
+    activeDatasetId: string;
+    getScaledTranslations: () => { translateXscaled: number; translateYscaled: number };
+}
+
+interface useProjectManagerProps {
+    projectPayload: ProjectPayload;
+    savedUiPreferences: SavedUiPreferences;
+    storageLifecycle: StorageLifecycle;
+}
+
+export function useProjectManager({
+    projectPayload,
+    savedUiPreferences,
+    storageLifecycle,
+}: useProjectManagerProps) {
     const {
         datasets,
         setDatasets,
@@ -51,7 +121,6 @@ export function useProjectManager({ projectPayload, savedUiPreferences, storageL
         isDirty,
         onDirtyChanged,
         resetHistory,
-        createEmptyDataset,
         setActiveDatasetId,
         activeDatasetId,
         getScaledTranslations,
@@ -148,7 +217,7 @@ export function useProjectManager({ projectPayload, savedUiPreferences, storageL
         }
     }
 
-    async function handleSaveAs(newName, inputProject) {
+    async function handleSaveAs(newName: string, inputProject?: Project) {
         try {
             const finalName = newName.trim() || 'Untitled Project';
 
@@ -204,57 +273,58 @@ export function useProjectManager({ projectPayload, savedUiPreferences, storageL
         } catch (err) {
             let message =
                 'Unable to connect to the sharing service. Please check your internet connection and try again.';
-
-            switch (err.message) {
-                case 'TOO_BIG':
-                    message =
-                        'This project is too large to be shared. Try reducing the image resolution before sharing.';
-                    console.warn(err);
-                    break;
-
-                case 'REQUESTED_ABORT':
-                    if (networkTimedOut.current) {
+            if (err instanceof Error) {
+                switch (err.message) {
+                    case 'TOO_BIG':
                         message =
-                            'The request timed out. Please check your internet connection and try again.';
-                    } else {
-                        message = 'Upload cancelled.';
-                    }
-                    console.warn(err);
-                    break;
+                            'This project is too large to be shared. Try reducing the image resolution before sharing.';
+                        console.warn(err);
+                        break;
 
-                case 'NETWORK':
-                    message =
-                        'Unable to connect to the sharing service. Please check your internet connection and try again.';
-                    console.warn(err);
-                    break;
+                    case 'REQUESTED_ABORT':
+                        if (networkTimedOut.current) {
+                            message =
+                                'The request timed out. Please check your internet connection and try again.';
+                        } else {
+                            message = 'Upload cancelled.';
+                        }
+                        console.warn(err);
+                        break;
 
-                case 'SERVER':
-                    message =
-                        'The sharing service is currently unavailable. Please try again later';
-                    console.warn(err);
-                    break;
+                    case 'NETWORK':
+                        message =
+                            'Unable to connect to the sharing service. Please check your internet connection and try again.';
+                        console.warn(err);
+                        break;
 
-                case 'HTTP':
-                    message =
-                        'The sharing service is currently unavailable. Please try again later';
-                    console.warn(err);
-                    break;
+                    case 'SERVER':
+                        message =
+                            'The sharing service is currently unavailable. Please try again later';
+                        console.warn(err);
+                        break;
 
-                default:
-                    message =
-                        'Unable to connect to the sharing service. Please check your internet connection and try again.';
-                    console.warn(err);
+                    case 'HTTP':
+                        message =
+                            'The sharing service is currently unavailable. Please try again later';
+                        console.warn(err);
+                        break;
+
+                    default:
+                        message =
+                            'Unable to connect to the sharing service. Please check your internet connection and try again.';
+                        console.warn(err);
+                }
+
+                if (err.message === 'REQUEST_ABORTED' && !networkTimedOut.current) {
+                    return;
+                }
+
+                setDialog({
+                    type: 'error',
+                    title: err.message === 'TOO_BIG' ? 'Project Too Large' : 'Upload failed',
+                    message: message,
+                });
             }
-
-            if (err.message === 'REQUEST_ABORTED' && !networkTimedOut.current) {
-                return;
-            }
-
-            setDialog({
-                type: 'error',
-                title: err.message === 'TOO_BIG' ? 'Project Too Large' : 'Upload failed',
-                message: message,
-            });
         } finally {
             shareBusy.current = false;
             clearTimeout(timeout);
@@ -262,7 +332,7 @@ export function useProjectManager({ projectPayload, savedUiPreferences, storageL
         }
     }
 
-    async function handleImportProject(shareId) {
+    async function handleImportProject(shareId: string) {
         if (shareBusy.current) {
             return;
         }
@@ -278,67 +348,76 @@ export function useProjectManager({ projectPayload, savedUiPreferences, storageL
         }, 30000);
 
         try {
-            const project = await importProject(shareId, controller.signal);
+            const importedProject = await importProject(shareId, controller.signal);
 
-            const result = await handleSaveAs(project.name, project);
-            project.id = result.id;
-            project.createdAt = result.createdAt;
-            project.updatedAt = result.updatedAt;
+            const result = await handleSaveAs(importedProject.name, importedProject);
+            if (result) {
+                const storedProject = {
+                    ...importedProject,
+                    id: result.id,
+                    createdAt: result.createdAt,
+                    updatedAt: result.updatedAt,
+                };
 
-            setIncomingProject(project);
+                setIncomingProject(storedProject);
 
-            setDialog({
-                type: 'import-success',
-                name: project.name,
-            });
+                setDialog({
+                    type: 'import-success',
+                    name: storedProject.name,
+                });
+            } else {
+                throw new Error("Couldn't save the imported project");
+            }
         } catch (err) {
             let message =
                 'Unable to connect to the sharing service. Please check your internet connection and try again.';
-            switch (err.message) {
-                case 'REQUESTED_ABORT':
-                    if (networkTimedOut.current) {
+
+            if (err instanceof Error) {
+                switch (err.message) {
+                    case 'REQUESTED_ABORT':
+                        if (networkTimedOut.current) {
+                            message =
+                                'The request timed out. Please check your internet connection and try again.';
+                        } else {
+                            message = 'Download cancelled.';
+                        }
+                        console.warn(err);
+                        break;
+
+                    case 'NOT_FOUND':
                         message =
-                            'The request timed out. Please check your internet connection and try again.';
-                    } else {
-                        message = 'Download cancelled.';
-                    }
-                    console.warn(err);
-                    break;
+                            'The shared project could not be found. Please check the share ID and try again.';
+                        console.warn(err);
+                        break;
 
-                case 'NOT_FOUND':
-                    message =
-                        'The shared project could not be found. Please check the share ID and try again.';
-                    console.warn(err);
-                    break;
+                    case 'NETWORK':
+                        message =
+                            'Unable to connect to the sharing service. Please check your internet connection and try again.';
+                        console.warn(err);
+                        break;
 
-                case 'NETWORK':
-                    message =
-                        'Unable to connect to the sharing service. Please check your internet connection and try again.';
-                    console.warn(err);
-                    break;
+                    case 'SERVER':
+                        message =
+                            'The sharing service is currently unavailable. Please try again later';
+                        console.warn(err);
+                        break;
 
-                case 'SERVER':
-                    message =
-                        'The sharing service is currently unavailable. Please try again later';
-                    console.warn(err);
-                    break;
+                    case 'HTTP':
+                        message =
+                            'The sharing service is currently unavailable. Please try again later';
+                        console.warn(err);
+                        break;
 
-                case 'HTTP':
-                    message =
-                        'The sharing service is currently unavailable. Please try again later';
-                    console.warn(err);
-                    break;
+                    default:
+                        message =
+                            'Unable to connect to the sharing service. Please check your internet connection and try again.';
+                        console.warn(err);
+                }
 
-                default:
-                    message =
-                        'Unable to connect to the sharing service. Please check your internet connection and try again.';
-                    console.warn(err);
+                if (err.message === 'REQUEST_ABORTED' && !networkTimedOut.current) {
+                    return;
+                }
             }
-
-            if (err.message === 'REQUEST_ABORTED' && !networkTimedOut.current) {
-                return;
-            }
-
             setDialog({
                 type: 'error',
                 title: 'Import failed',
@@ -353,7 +432,7 @@ export function useProjectManager({ projectPayload, savedUiPreferences, storageL
         }
     }
 
-    function buildFullProjectExport(datasets, projectName) {
+    function buildFullProjectExport(datasets: Dataset[], projectName: string): Project {
         const { translateXscaled, translateYscaled } = getScaledTranslations();
 
         return {

@@ -1,15 +1,18 @@
-import { Calibration } from '../../../app/calibration/types';
-import { Dataset } from '../../../app/datasets/types';
+import type { Calibration } from '../../../app/calibration/types';
+import type { StoredDataset } from './Project';
 
 export interface SharedProject {
     formatVersion: number;
     name: string;
     appVersion: string;
+    device: {
+        platform: string;
+        version: string | number;
+    };
     image: SharedProjectImage | null;
-
     calibration: Calibration;
     calibratedState: boolean;
-    datasets: Dataset[];
+    datasets: StoredDataset[];
     uiState: {
         mode: string;
         zoomDisplay: number;

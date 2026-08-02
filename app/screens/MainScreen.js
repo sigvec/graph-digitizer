@@ -13,7 +13,6 @@ import {
     DISPLAY_PADDING,
     DEFAULT_CALIBRATION,
 } from '../constants/geometry';
-import { DATASET_COLOURS } from '../constants/colours';
 import { AxisScale } from '../calibration/constants';
 
 import AppIcon from '../components/AppIcon';
@@ -32,7 +31,6 @@ import HelpModal from '../components/HelpModal';
 import { transformPoint, getRegressionPredictor } from '../calibration/transform';
 import { linearRegression, computeR2 } from '../analysis/regression';
 import { prepareRegressionPoints } from '../analysis/prepareRegressionPoints';
-import { generateId } from '../utils/id';
 import { loadAllProjects } from '../../frontend/services/storage/localStorage';
 import { removeOrphanedImages } from '../../frontend/services/storage/imageStorage';
 import { hydrateProject } from '../utils/projectTransform';
@@ -40,25 +38,13 @@ import { loadDecodedImage } from '../../frontend/services/imageAnalysis/imageLoa
 
 import { useHistoryState } from '../hooks/useHistoryState';
 import { useGraphInteraction } from '../hooks/useGraphInteraction';
-import { useDatasetState } from '../hooks/useDatasetState';
+import { useDatasetState, createEmptyDataset } from '../hooks/useDatasetState';
 import { useProjectManager } from '../hooks/useProjectManager';
 
 function getImageSize(uri) {
     return new Promise((resolve, reject) => {
         Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
     });
-}
-
-function createEmptyDataset(index = 0) {
-    return {
-        id: generateId(),
-        name: `Curve ${index + 1}`,
-        colour: DATASET_COLOURS[index % DATASET_COLOURS.length],
-        visible: true,
-        locked: false,
-        curveMode: 'none',
-        points: [],
-    };
 }
 
 export default function MainScreen({
@@ -87,7 +73,6 @@ export default function MainScreen({
     const [imageWidth, setImageWidth] = useState(null);
     const [imageHeight, setImageHeight] = useState(null);
     const [selectedPointRef, setSelectedPointRef] = useState(null);
-
     const [datasets, setDatasets] = useState([createEmptyDataset(0)]);
     const [activeDatasetId, setActiveDatasetId] = useState(datasets[0].id);
     const [mode, setMode] = useState('points');
@@ -208,6 +193,7 @@ export default function MainScreen({
         setCalibratedState,
         selectedPointRef,
         setSelectedPointRef,
+        fitScale: Math.min(displaySize.width / imageWidth, displaySize.height / imageHeight),
         zoomDisplay,
         nudgeAllPoints,
         onDirtyChanged,
@@ -299,7 +285,6 @@ export default function MainScreen({
         isDirty,
         onDirtyChanged,
         resetHistory,
-        createEmptyDataset,
         getScaledTranslations,
     };
 

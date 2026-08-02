@@ -1,4 +1,17 @@
 import { useState, useEffect, useCallback } from 'react';
+import { Dataset } from '../datasets/types';
+import { Calibration } from '../calibration/types';
+
+interface useHistoryStateProps {
+    datasets: Dataset[];
+    calibration: Calibration;
+    image: string;
+    setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
+    setCalibration: React.Dispatch<React.SetStateAction<Calibration>>;
+    setProjectImage: React.Dispatch<React.SetStateAction<string>>;
+    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+    isProcessingProject: boolean;
+}
 
 export function useHistoryState({
     datasets,
@@ -9,8 +22,8 @@ export function useHistoryState({
     setProjectImage,
     onDirtyChanged,
     isProcessingProject,
-}) {
-    const [history, setHistory] = useState([]);
+}: useHistoryStateProps) {
+    const [history, setHistory] = useState<string[]>([]);
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [isRestoringHistory, setIsRestoringHistory] = useState(false);
 
@@ -18,7 +31,7 @@ export function useHistoryState({
     const snapshotString = JSON.stringify(currentSnapshot);
 
     const commitHistorySnapshot = useCallback(
-        (snapshotString) => {
+        (snapshotString: string) => {
             const latest = history[historyIndex];
             if (snapshotString === latest) return;
 
@@ -73,7 +86,7 @@ export function useHistoryState({
         setIsRestoringHistory(false);
     }, [history, historyIndex, setDatasets, setCalibration, setProjectImage, onDirtyChanged]);
 
-    const resetHistory = useCallback((baseSnapshotString) => {
+    const resetHistory = useCallback((baseSnapshotString: string) => {
         setHistory([baseSnapshotString]);
         setHistoryIndex(0);
     }, []);

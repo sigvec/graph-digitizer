@@ -1,7 +1,5 @@
 import type { Project } from './Project';
-
 import { deserializeProject } from './deserializeProject';
-
 import { API_BASE_URL } from './apiConfig';
 
 export async function importProject(shareId: string, signal?: AbortSignal): Promise<Project> {

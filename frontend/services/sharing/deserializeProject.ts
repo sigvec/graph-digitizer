@@ -1,8 +1,8 @@
 import 'react-native-get-random-values';
 
-import { SharedProject, SharedProjectImage } from './SharedProject';
-import { saveImageDataToLocal } from '../storage/imageStorage';
+import type { SharedProject, SharedProjectImage } from './SharedProject';
 import type { Project } from './Project';
+import { saveImageDataToLocal } from '../storage/imageStorage';
 
 export async function deserializeImage(imageData: SharedProjectImage): Promise<string> {
     const storedImage = await saveImageDataToLocal(imageData);
@@ -12,7 +12,6 @@ export async function deserializeImage(imageData: SharedProjectImage): Promise<s
 export async function deserializeProject(project: SharedProject): Promise<Project> {
     return {
         ...project,
-        id: null,
         datasetCount: project.datasets.length,
         image:
             project.image == null

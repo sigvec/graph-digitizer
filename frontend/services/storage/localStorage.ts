@@ -1,11 +1,12 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { generateId } from '../../../app/utils/id';
-import type { StoredProject } from '../sharing/Project';
+import type { Project, StoredProject } from '../sharing/Project';
+import type { SaveProjectResponse } from './SaveProjectResponse';
 
 const PROJECT_PREFIX = 'project:';
 
-export async function saveProject(project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>) {
+export async function saveProject(project: Project): Promise<SaveProjectResponse> {
     const now = new Date().toISOString();
 
     const id = generateId();
@@ -67,10 +68,7 @@ export async function loadAllProjects() {
     return result;
 }
 
-export async function updateProject(
-    id: string,
-    project: Omit<StoredProject, 'id' | 'createdAt' | 'updatedAt'>,
-): Promise<StoredProject> {
+export async function updateProject(id: string, project: Project): Promise<SaveProjectResponse> {
     const now = new Date().toISOString();
 
     const existing = (await AsyncStorage.getItem(PROJECT_PREFIX + id)) ?? '';
@@ -86,7 +84,11 @@ export async function updateProject(
 
     await AsyncStorage.setItem(PROJECT_PREFIX + id, JSON.stringify(payload));
 
-    return payload;
+    return {
+        id,
+        createdAt: now,
+        updatedAt: now,
+    };
 }
 
 export async function deleteProject(id: string) {

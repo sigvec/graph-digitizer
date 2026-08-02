@@ -10,7 +10,6 @@ const MAX_SHARED_PROJECT_SIZE = 20 * 1024 * 1024;
 export async function shareProject(project: Project, signal?: AbortSignal): Promise<ShareResponse> {
     try {
         const sharedProject = await serializeProject(project);
-
         const json = JSON.stringify(sharedProject);
         const bytes = new TextEncoder().encode(json).length;
 

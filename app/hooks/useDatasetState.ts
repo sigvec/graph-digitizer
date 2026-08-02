@@ -1,5 +1,33 @@
 import { generateId } from '../utils/id';
 import { DATASET_COLOURS } from '../constants/colours';
+import type { Dataset } from '../datasets/types';
+import { CurveMode } from '../datasets/constants';
+
+export function createEmptyDataset(index = 0) {
+    return {
+        id: generateId(),
+        name: `Curve ${index + 1}`,
+        colour: DATASET_COLOURS[index % DATASET_COLOURS.length],
+        visible: true,
+        locked: false,
+        curveMode: CurveMode.NONE,
+        points: [],
+    };
+}
+
+interface useDatasetStateProps {
+    datasets: Dataset[];
+    activeDatasetId: string;
+    setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
+    setSelectedPointRef: React.Dispatch<
+        React.SetStateAction<{ datasetId: string; pointId: string } | null>
+    >;
+    setActiveDatasetId: React.Dispatch<React.SetStateAction<string>>;
+    setRenameDatasetVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    setRenameText: React.Dispatch<React.SetStateAction<string>>;
+    setColourPickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
+    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+}
 
 export function useDatasetState({
     datasets,
@@ -7,12 +35,11 @@ export function useDatasetState({
     setDatasets,
     setSelectedPointRef,
     setActiveDatasetId,
-    createEmptyDataset,
     setRenameDatasetVisible,
     setRenameText,
     setColourPickerVisible,
     onDirtyChanged,
-}) {
+}: useDatasetStateProps) {
     function handleRenameDataset() {
         const active = datasets.find((d) => d.id === activeDatasetId);
 
@@ -24,7 +51,7 @@ export function useDatasetState({
         setRenameDatasetVisible(true);
     }
 
-    function confirmRenameDataset(newName) {
+    function confirmRenameDataset(newName: string) {
         const name = newName.trim();
 
         if (!name) {
@@ -45,7 +72,7 @@ export function useDatasetState({
         onDirtyChanged(true);
     }
 
-    function setDatasetColour(colour) {
+    function setDatasetColour(colour: string) {
         setDatasets((prev) =>
             prev.map((d) => {
                 if (d.id !== activeDatasetId) {
@@ -78,7 +105,7 @@ export function useDatasetState({
         onDirtyChanged(true);
     }
 
-    function createDuplicateDataset(dataset) {
+    function createDuplicateDataset(dataset: Dataset) {
         const usedColours = datasets.map((d) => d.colour);
 
         const newColour =
@@ -96,24 +123,24 @@ export function useDatasetState({
         };
     }
 
-    function toggleCurveVisibility(datasetId) {
+    function toggleCurveVisibility(datasetId: string) {
         setDatasets((prev) =>
             prev.map((d) => {
                 if (d.id !== datasetId) {
                     return d;
                 }
 
-                let mode = 'none';
+                let mode: CurveMode = CurveMode.NONE;
 
                 switch (d.curveMode) {
-                    case 'none':
-                        mode = 'linear';
+                    case CurveMode.NONE:
+                        mode = CurveMode.LINEAR;
                         break;
-                    case 'linear':
-                        mode = 'spline';
+                    case CurveMode.LINEAR:
+                        mode = CurveMode.SPLINE;
                         break;
                     default:
-                        mode = 'none';
+                        mode = CurveMode.NONE;
                 }
 
                 return {
@@ -124,7 +151,7 @@ export function useDatasetState({
         );
     }
 
-    function toggleDatasetVisibility(datasetId) {
+    function toggleDatasetVisibility(datasetId: string) {
         if (datasetId === activeDatasetId) {
             setSelectedPointRef(null);
         }
@@ -143,7 +170,7 @@ export function useDatasetState({
         );
     }
 
-    function toggleDatasetLock(datasetId) {
+    function toggleDatasetLock(datasetId: string) {
         setDatasets((prev) =>
             prev.map((d) => {
                 if (d.id !== datasetId) {
