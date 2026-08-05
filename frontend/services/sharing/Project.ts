@@ -35,7 +35,7 @@ export interface Project {
         zoomDisplay: number;
         translateXscaled: number;
         translateYscaled: number;
-        activeDatasetId: string;
+        activeDatasetId: string | null;
         showRegressionLine: boolean;
     };
 }

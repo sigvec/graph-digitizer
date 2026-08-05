@@ -4,13 +4,13 @@ import Animated, { useAnimatedProps, SharedValue } from 'react-native-reanimated
 
 import { Path } from 'react-native-svg';
 
-import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../constants/geometry';
+import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../../constants/geometry';
 
-import { Point } from '../types/geometry';
-import { Calibration } from '../calibration/types';
-import { LinearRegressionResult } from '../analysis/types';
-import { CurveMode } from '../datasets/constants';
-import { getRegressionPredictor, inverseTransformPoint } from '../calibration/transform';
+import { Point } from '../../types/geometry';
+import { Calibration } from '../../calibration/types';
+import { LinearRegressionResult } from '../../analysis/types';
+import { CurveMode } from '../../datasets/constants';
+import { getRegressionPredictor, inverseTransformPoint } from '../../calibration/transform';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 

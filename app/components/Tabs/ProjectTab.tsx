@@ -6,6 +6,7 @@ import { File } from 'expo-file-system';
 import { COLOURS, SPACING } from '../../theme';
 import IconButton from '../IconButton';
 import formatTimestamp from '../../utils/timestamp';
+import { ImageSize } from '../../image/useImageManager';
 
 function formatBytes(bytes: number): string {
     if (bytes < 1024) {
@@ -21,14 +22,13 @@ function formatBytes(bytes: number): string {
 
 interface Props {
     projectName: string;
-    projectCreatedAt: string;
-    projectUpdatedAt: string;
+    projectCreatedAt: string | null;
+    projectUpdatedAt: string | null;
     image: string;
-    imageWidth: number;
-    imageHeight: number;
+    imageSize: ImageSize | null;
     pickImage: () => void;
     storageReady: boolean;
-    lastShare: { shareId: string; sharedAt: string };
+    lastShare: { shareId: string; sharedAt: string } | undefined;
 }
 
 export default function ProjectTab({
@@ -36,13 +36,14 @@ export default function ProjectTab({
     projectCreatedAt,
     projectUpdatedAt,
     image,
-    imageWidth,
-    imageHeight,
+    imageSize,
     pickImage,
     storageReady,
     lastShare,
 }: Props) {
     const imageFile = new File(image);
+    const imageWidth = imageSize?.width;
+    const imageHeight = imageSize?.height;
 
     return (
         <View style={styles.workspaceToolBackground}>
@@ -55,19 +56,19 @@ export default function ProjectTab({
             <View style={styles.projectTabItemRow}>
                 <Text style={styles.projectTabItemLabel}>Created:</Text>
                 <Text numberOfLines={1} ellipsizeMode="middle" style={styles.projectTabItemValue}>
-                    {formatTimestamp(projectCreatedAt) ?? '(Unsaved)'}
+                    {projectCreatedAt != null ? formatTimestamp(projectCreatedAt) : '(Unsaved)'}
                 </Text>
             </View>
             <View style={styles.projectTabItemRow}>
                 <Text style={styles.projectTabItemLabel}>Updated:</Text>
                 <Text numberOfLines={1} ellipsizeMode="middle" style={styles.projectTabItemValue}>
-                    {formatTimestamp(projectUpdatedAt) ?? '(Unsaved)'}
+                    {projectUpdatedAt != null ? formatTimestamp(projectUpdatedAt) : '(Unsaved)'}
                 </Text>
             </View>
             <View style={styles.projectTabItemRow}>
                 <Text style={styles.projectTabItemLabel}>Image:</Text>
                 <Text numberOfLines={1} ellipsizeMode="middle" style={styles.projectTabItemValue}>
-                    {image
+                    {image && imageWidth && imageHeight
                         ? `[${imageWidth} x ${imageHeight}] (${formatBytes(imageFile.size)})`
                         : 'No image'}
                 </Text>
@@ -93,7 +94,7 @@ export default function ProjectTab({
                         ellipsizeMode="middle"
                         style={styles.projectTabItemValue}
                     >
-                        {lastShare.shareId} ({formatTimestamp(projectUpdatedAt)})
+                        {lastShare.shareId} ({formatTimestamp(lastShare.sharedAt)})
                     </Text>
                 </View>
             )}

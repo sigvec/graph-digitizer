@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateId } from '../../../app/utils/id';
 import type { Project, StoredProject } from '../sharing/Project';
 import type { SaveProjectResponse } from './SaveProjectResponse';
+import { AxisScale } from '../../../app/calibration/constants';
+import { LOGICAL_HEIGHT, LOGICAL_WIDTH } from '../../../app/constants/geometry';
 
 const PROJECT_PREFIX = 'project:';
 
@@ -37,9 +39,57 @@ export async function loadProject(id: string): Promise<StoredProject> {
     try {
         const rawObject = JSON.parse(json);
 
-        if ('color' in rawObject && !('colour' in rawObject)) {
-            rawObject.colour = rawObject.color;
-            delete rawObject.color;
+        if (rawObject && typeof rawObject === 'object') {
+            if ('color' in rawObject) {
+                if (!('colour' in rawObject)) {
+                    rawObject.colour = rawObject.color;
+                }
+                delete rawObject.color;
+            }
+        }
+
+        if (
+            rawObject?.calibration &&
+            rawObject.calibration === 'object' &&
+            'xRef' in rawObject.calibration
+        ) {
+            if (
+                rawObject?.calibration &&
+                rawObject.calibration === 'object' &&
+                !('x' in rawObject.calibration)
+            ) {
+                rawObject.calibration.x = {
+                    scaleType: AxisScale.LINEAR,
+                    p0: null,
+                    p1: rawObject.calibration.xRef.x ?? LOGICAL_WIDTH - 10,
+                    value0: rawObject.axes?.x1 ?? 0,
+                    value1: rawObject.axes?.x2 ?? LOGICAL_WIDTH - 10,
+                };
+                rawObject.calibration.y = {
+                    scaleType: AxisScale.LINEAR,
+                    p0: null,
+                    p1: rawObject.calibration.yRef.y ?? 10,
+                    value0: rawObject.axes?.y1 ?? 0,
+                    value1: rawObject.axes?.y2 ?? LOGICAL_HEIGHT - 10,
+                };
+            }
+
+            delete rawObject.calibration.xRef;
+            delete rawObject.calibration.yRef;
+            delete rawObject.axes;
+        }
+
+        if (rawObject?.ui && rawObject.ui === 'object' && 'translateX' in rawObject.ui) {
+            if (
+                rawObject?.ui &&
+                rawObject.ui === 'object' &&
+                !('translateXscaled' in rawObject.ui)
+            ) {
+                rawObject.ui.translateXscaled = rawObject.ui.translateX;
+                rawObject.ui.translateYscaled = rawObject.ui.translateY;
+            }
+            delete rawObject.ui.translateX;
+            delete rawObject.ui.translateY;
         }
 
         return rawObject;

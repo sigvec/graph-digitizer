@@ -132,9 +132,9 @@ function findNearestSegmentInsertPosition(points: Point[], newPoint: Point): num
 interface useGraphInteractionProps {
     mode: InteractionMode;
     datasets: Dataset[];
-    activeDatasetId: string;
+    activeDatasetId: string | null;
     activeDataset: Dataset;
-    decodedImage: DecodedImage;
+    decodedImage: DecodedImage | null;
     calibration: Calibration;
     setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
     setCalibration: React.Dispatch<React.SetStateAction<Calibration>>;
@@ -143,7 +143,7 @@ interface useGraphInteractionProps {
     setSelectedPointRef: React.Dispatch<
         React.SetStateAction<{ datasetId: string; pointId: string } | null>
     >;
-    setActiveDatasetId: React.Dispatch<React.SetStateAction<string>>;
+    setActiveDatasetId: React.Dispatch<React.SetStateAction<string | null>>;
     fitScale: number;
     zoomDisplay: number;
     nudgeAllPoints: boolean;
@@ -255,11 +255,10 @@ export function useGraphInteraction({
         onDirtyChanged(true);
         setSelectedPointRef(null);
 
-        if (mode !== 'points') {
-            const calibrationPoint =
-                mode === 'origin' ? { x, y } : mode === 'xRef' ? { x, y: null } : { x: null, y };
+        if (mode === 'calibration') {
+            const calibrationPoint = { x, y };
 
-            setCalibration((prev) => ({ ...prev, [mode]: calibrationPoint }));
+            setCalibration((prev) => ({ ...prev, ['origin']: calibrationPoint }));
             setCalibratedState(true);
             return;
         }
@@ -267,15 +266,19 @@ export function useGraphInteraction({
         if (!activeDataset?.visible || activeDataset?.locked) return;
 
         const addedPointId = generateId();
-        const addedPointRef = { datasetId: activeDatasetId, pointId: addedPointId };
+        const addedPointRef =
+            activeDatasetId != null ? { datasetId: activeDatasetId, pointId: addedPointId } : null;
 
-        const nudgeVec = snapVector(
-            decodedImage,
-            x / LOGICAL_WIDTH,
-            y / LOGICAL_HEIGHT,
-            1 / (fitScale || 1),
-            1 / (zoomDisplay || 1),
-        );
+        const nudgeVec =
+            decodedImage != null
+                ? snapVector(
+                      decodedImage,
+                      x / LOGICAL_WIDTH,
+                      y / LOGICAL_HEIGHT,
+                      1 / (fitScale || 1),
+                      1 / (zoomDisplay || 1),
+                  )
+                : null;
         const nudgeX = (nudgeVec?.dx ?? 0) * LOGICAL_WIDTH;
         const nudgeY = (nudgeVec?.dy ?? 0) * LOGICAL_HEIGHT;
         const newPoint = { id: addedPointId, x: x + nudgeX, y: y + nudgeY };

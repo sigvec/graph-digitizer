@@ -6,19 +6,19 @@ import IconButton, { DatasetActionButton } from '../IconButton';
 import type { Dataset } from '../../datasets/types';
 
 interface Props {
-    activeDatasetId: string;
-    setActiveDatasetId: React.Dispatch<React.SetStateAction<string>>;
+    activeDatasetId: string | null;
+    setActiveDatasetId: React.Dispatch<React.SetStateAction<string | null>>;
     activeDataset: Dataset;
     setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
     datasets: Dataset[];
-    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+    onDirtyChanged: (newValue: boolean) => void;
     toggleCurveVisibility: (id: string) => void;
     toggleDatasetVisibility: (id: string) => void;
     toggleDatasetLock: (id: string) => void;
     handleDeleteDataset: () => void;
     handleRenameDataset: () => void;
     setColourPickerVisible: React.Dispatch<React.SetStateAction<boolean>>;
-    createDuplicateDataset: (daaset: Dataset) => Dataset;
+    createDuplicateDataset: (daaset: Dataset, existingDatasets: Dataset[]) => Dataset;
     createEmptyDataset: (count: number) => Dataset;
     setSelectedPointRef: React.Dispatch<
         React.SetStateAction<{ datasetId: string; pointId: string } | null>
@@ -136,7 +136,10 @@ export default function DatasetsTab({
                         icon="duplicate"
                         label="Duplicate"
                         onPress={() => {
-                            const duplicateDataset = createDuplicateDataset(activeDataset);
+                            const duplicateDataset = createDuplicateDataset(
+                                activeDataset,
+                                datasets,
+                            );
 
                             setDatasets((prev) => [...prev, duplicateDataset]);
 

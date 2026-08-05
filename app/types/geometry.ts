@@ -4,4 +4,4 @@ export interface Point {
     y: number;
 }
 
-export type InteractionMode = 'points' | 'origin' | 'xRef' | 'yRef';
+export type InteractionMode = 'points' | 'calibration';

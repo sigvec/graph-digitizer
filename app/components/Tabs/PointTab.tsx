@@ -7,15 +7,15 @@ import type { Dataset } from '../../datasets/types';
 import type { Point } from '../../types/geometry';
 
 interface Props {
-    activeDatasetId: string;
+    activeDatasetId: string | null;
     activeDataset: Dataset;
     setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
-    selectedPointRef: { datasetId: string; pointId: string };
+    selectedPointRef: { datasetId: string; pointId: string } | null;
     setSelectedPointRef: React.Dispatch<
-        React.SetStateAction<{ datasetId: string; pointId: string }>
+        React.SetStateAction<{ datasetId: string; pointId: string } | null>
     >;
-    selectedPointIndex: number;
-    selectedPointData: Point;
+    selectedPointIndex: number | null;
+    selectedPointData: Point | undefined;
     pointCount: number;
 
     nudgePoint: (dx: number, dy: number) => void;
@@ -79,7 +79,7 @@ export default function PointTab({
                 <IconButton
                     icon="previous"
                     onPress={() => {
-                        if (!selectedPointRef) {
+                        if (!selectedPointIndex) {
                             return;
                         }
                         const prevIndex =
@@ -92,7 +92,7 @@ export default function PointTab({
                     }}
                     disabled={!selectedPointRef}
                 />
-                {selectedPointData ? (
+                {selectedPointIndex ? (
                     <Text
                         style={[
                             {
@@ -110,7 +110,7 @@ export default function PointTab({
                 <IconButton
                     icon="next"
                     onPress={() => {
-                        if (!selectedPointRef) {
+                        if (!selectedPointIndex) {
                             return;
                         }
                         const nextIndex = (selectedPointIndex + 1) % activeDataset.points.length;
@@ -202,7 +202,7 @@ export default function PointTab({
                     <IconButton
                         icon="delete"
                         label="Delete Point"
-                        onPress={selectedPointRef && handleDeletePoint}
+                        onPress={handleDeletePoint}
                         disabled={!selectedPointRef || activeDataset.locked}
                     />
                 </View>

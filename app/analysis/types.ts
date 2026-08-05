@@ -4,3 +4,8 @@ export interface LinearRegressionResult {
 }
 
 export type Predictor = (x: number) => number;
+
+export interface Coords {
+    x: number;
+    y: number;
+}

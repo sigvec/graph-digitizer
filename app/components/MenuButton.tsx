@@ -6,8 +6,8 @@ import AppIcon from './AppIcon';
 import type { IconName } from './icons';
 
 interface Props {
-    icon: IconName;
-    label: string;
+    icon?: IconName;
+    label?: string;
     onPress: () => void;
 }
 

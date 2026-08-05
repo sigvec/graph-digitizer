@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { View, StyleSheet, Text, ScrollView, Alert, ActivityIndicator, Image } from 'react-native';
+import React, { useState, useEffect, useRef } from 'react';
+import { View, StyleSheet, Text, ScrollView, Alert, ActivityIndicator } from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
@@ -19,7 +19,7 @@ import AppIcon from '../components/AppIcon';
 import IconButton from '../components/IconButton';
 import MenuButton from '../components/MenuButton';
 import TabButton from '../components/TabButton';
-import GraphCanvas from '../components/GraphCanvas';
+import GraphCanvas from '../components/graph/GraphCanvas';
 import CalibrationTab from '../components/Tabs/CalibrationTab';
 import AnalysisTab from '../components/Tabs/AnalysisTab';
 import ProjectTab from '../components/Tabs/ProjectTab';
@@ -29,6 +29,7 @@ import { TextInputModal, ProjectMenuModal, ColourPickerModal, Dialog } from '../
 import HelpModal from '../components/HelpModal';
 
 import { transformPoint, getRegressionPredictor } from '../calibration/transform';
+import { computeStats } from '../analysis/stats';
 import { linearRegression, computeR2 } from '../analysis/regression';
 import { prepareRegressionPoints } from '../analysis/prepareRegressionPoints';
 import { loadAllProjects } from '../../frontend/services/storage/localStorage';
@@ -38,15 +39,28 @@ import { loadDecodedImage } from '../../frontend/services/imageAnalysis/imageLoa
 
 import { useHistoryState } from '../hooks/useHistoryState';
 import { useGraphInteraction } from '../hooks/useGraphInteraction';
-import { useDatasetState, createEmptyDataset } from '../hooks/useDatasetState';
-import { useProjectManager } from '../hooks/useProjectManager';
+import {
+    useDatasetActions,
+    createEmptyDataset,
+    createDuplicateDataset,
+} from '../hooks/useDatasetActions';
+import { useProjectManager, DialogPayload } from '../project/useProjectManager';
+import { StoredProject } from '../../frontend/services/sharing/Project';
+import { DecodedImage } from '../../frontend/services/imageAnalysis/types';
+import { InteractionMode } from '../types/geometry';
+import { LastShare } from '../project/types';
+import { CalibrationSelection } from '../calibration/types';
+import { ImageSize, useImageManager } from '../image/useImageManager';
 
-function getImageSize(uri) {
-    return new Promise((resolve, reject) => {
-        Image.getSize(uri, (width, height) => resolve({ width, height }), reject);
-    });
+interface MainScreenProps {
+    currentProjectId: string | null;
+    setCurrentProjectId: React.Dispatch<React.SetStateAction<string | null>>;
+    onOpenList: () => void;
+    incomingProject: StoredProject | null;
+    setIncomingProject: React.Dispatch<React.SetStateAction<StoredProject | null>>;
+    isDirty: boolean;
+    onDirtyChanged: (newValue: boolean) => void;
 }
-
 export default function MainScreen({
     currentProjectId,
     setCurrentProjectId,
@@ -55,41 +69,61 @@ export default function MainScreen({
     setIncomingProject,
     isDirty,
     onDirtyChanged,
-}) {
+}: MainScreenProps) {
     // ==================================================
     // State
     // ==================================================
 
+    //
+    // Project
+    // --------------------------------------------------
     const [projectName, setProjectName] = useState('Untitled Project');
-    const [projectCreatedAt, setProjectCreatedAt] = useState(null);
-    const [projectUpdatedAt, setProjectUpdatedAt] = useState(null);
+    const [projectCreatedAt, setProjectCreatedAt] = useState<string | null>(null);
+    const [projectUpdatedAt, setProjectUpdatedAt] = useState<string | null>(null);
     const [projectMenuVisible, setProjectMenuVisible] = useState(false);
-    const [colourPickerVisible, setColourPickerVisible] = useState(false);
-    const [dialog, setDialog] = useState(null);
-    const [justCopied, setJustCopied] = useState(null);
-    const [image, setImage] = useState(null);
-    const [zoomDisplay, setZoomDisplay] = useState(1);
-    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
-    const [imageWidth, setImageWidth] = useState(null);
-    const [imageHeight, setImageHeight] = useState(null);
-    const [selectedPointRef, setSelectedPointRef] = useState(null);
     const [datasets, setDatasets] = useState([createEmptyDataset(0)]);
-    const [activeDatasetId, setActiveDatasetId] = useState(datasets[0].id);
-    const [mode, setMode] = useState('points');
+    const [activeDatasetId, setActiveDatasetId] = useState<string | null>(datasets[0].id);
     const [calibration, setCalibration] = useState(DEFAULT_CALIBRATION);
     const [calibratedState, setCalibratedState] = useState(false);
+    const [calibrationSelection, setCalibrationSelection] =
+        useState<CalibrationSelection>('origin');
+    const [lastShare, setLastShare] = useState<LastShare | undefined>(undefined);
+    const [storageReady, setStorageReady] = useState(false);
+    const [isLoadingProject, setIsLoadingProject] = useState(false);
+    const [isRestoringImage, setIsRestoringImage] = useState(false);
+    //
+    // Workspace
+    // --------------------------------------------------
+    const [workspaceTab, setWorkspaceTab] = useState('edit');
+    const [showRegressionLine, setShowRegressionLine] = useState(false);
+    //
+    // Image
+    // --------------------------------------------------
+    const [image, setImage] = useState<string | null>(null);
+    const [zoomDisplay, setZoomDisplay] = useState(1);
+    const [viewportSize, setViewportSize] = useState({ width: 0, height: 0 });
+    const [imageSize, setImageSize] = useState<ImageSize | null>(null);
+    //
+    // Interaction
+    // --------------------------------------------------
+    const [selectedPointRef, setSelectedPointRef] = useState<{
+        datasetId: string;
+        pointId: string;
+    } | null>(null);
+    const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
+    const [translation, setTranslation] = useState({ x: 0, y: 0 });
+    const [mode, setMode] = useState<InteractionMode>('points');
+    //
+    // Dialogs
+    // --------------------------------------------------
+    const [colourPickerVisible, setColourPickerVisible] = useState(false);
+    const [dialogPayload, setDialogPayload] = useState<DialogPayload | null>(null);
+    const [justCopied, setJustCopied] = useState(false);
+    const [showHelp, setShowHelp] = useState(false);
     const [renameDatasetVisible, setRenameDatasetVisible] = useState(false);
     const [renameText, setRenameText] = useState('');
     const [renameProjectVisible, setRenameProjectVisible] = useState(false);
     const [saveAsVisible, setSaveAsVisible] = useState(false);
-    const [workspaceTab, setWorkspaceTab] = useState('edit');
-    const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
-    const [showRegressionLine, setShowRegressionLine] = useState(false);
-    const [lastShare, setLastShare] = useState(undefined);
-    const [storageReady, setStorageReady] = useState(false);
-    const [isLoadingProject, setIsLoadingProject] = useState(false);
-    const [isRestoringImage, setIsRestoringImage] = useState(false);
-    const [showHelp, setShowHelp] = useState(false);
 
     // ==================================================
     // Refs / Shared Values
@@ -101,66 +135,12 @@ export default function MainScreen({
     const savedScale = useSharedValue(1);
     const savedTranslateX = useSharedValue(0);
     const savedTranslateY = useSharedValue(0);
-    const decodedImage = useRef(null);
-
-    const getScaledTranslations = () => {
-        const width = Math.max(0, viewportSize.width - DISPLAY_PADDING * 2);
-        const height = Math.max(0, viewportSize.height - DISPLAY_PADDING * 2);
-
-        return {
-            translateXscaled: width > 0 ? translateX.value / width : 0,
-            translateYscaled: height > 0 ? translateY.value / height : 0,
-        };
-    };
+    const decodedImage = useRef<DecodedImage | null>(null);
 
     const displaySize = {
         width: Math.max(0, viewportSize.width - DISPLAY_PADDING * 2),
         height: Math.max(0, viewportSize.height - DISPLAY_PADDING * 2),
     };
-
-    const setProjectImage = useCallback(
-        async (uri, zoom, xTranslation, yTranslation) => {
-            setIsRestoringImage(true);
-
-            try {
-                if (typeof uri !== 'string' || uri.length === 0) {
-                    setImage(null);
-                    setImageWidth(null);
-                    setImageHeight(null);
-                    return;
-                }
-
-                const { width, height } = await getImageSize(uri);
-
-                setImageWidth(width);
-                setImageHeight(height);
-                setImage(uri);
-
-                if (Number.isFinite(zoom)) {
-                    fitImage(width, height, Math.abs(zoom), xTranslation, yTranslation);
-                } else {
-                    const fitScale = Math.min(
-                        displaySize.width / width,
-                        displaySize.height / height,
-                    );
-
-                    const finalScale = zoomDisplay * fitScale;
-
-                    scale.value = finalScale;
-                    savedScale.value = finalScale;
-                }
-            } catch (error) {
-                console.warn('Failed to load image:', error);
-
-                setImage(null);
-                setImageWidth(null);
-                setImageHeight(null);
-            } finally {
-                setIsRestoringImage(false);
-            }
-        },
-        [displaySize.width, displaySize.height, fitImage, zoomDisplay, scale, savedScale],
-    );
 
     const activeDataset = datasets.find((d) => d.id === activeDatasetId) || datasets[0];
 
@@ -193,10 +173,33 @@ export default function MainScreen({
         setCalibratedState,
         selectedPointRef,
         setSelectedPointRef,
-        fitScale: Math.min(displaySize.width / imageWidth, displaySize.height / imageHeight),
+        fitScale: Math.min(
+            displaySize.width / (imageSize?.width ?? 1),
+            displaySize.height / (imageSize?.height ?? 1),
+        ),
         zoomDisplay,
         nudgeAllPoints,
         onDirtyChanged,
+    });
+
+    //
+    // ImageManager
+    // --------------------------------------------------
+    const { fitCurrentImage, setProjectImage, centreView } = useImageManager({
+        displaySize,
+        setZoomDisplay,
+        scale,
+        savedScale,
+        translateX,
+        translateY,
+        savedTranslateX,
+        savedTranslateY,
+        translation,
+        imageSize,
+        setImageSize,
+        setImage,
+        setIsRestoringImage,
+        zoomDisplay,
     });
 
     //
@@ -215,27 +218,21 @@ export default function MainScreen({
     });
 
     //
-    // DatasetState
+    // DatasetActions
     // --------------------------------------------------
     const {
-        handleRenameDataset,
-        confirmRenameDataset,
+        renameDataset,
         setDatasetColour,
-        handleDeleteDataset,
-        createDuplicateDataset,
+        deleteDataset,
         toggleCurveVisibility,
         toggleDatasetVisibility,
         toggleDatasetLock,
-    } = useDatasetState({
+    } = useDatasetActions({
         datasets,
-        setDatasets,
         activeDatasetId,
+        setDatasets,
+        clearSelectedPoint: () => setSelectedPointRef(null),
         setActiveDatasetId,
-        setSelectedPointRef,
-        createEmptyDataset,
-        setRenameDatasetVisible,
-        setRenameText,
-        setColourPickerVisible,
         onDirtyChanged,
     });
 
@@ -281,11 +278,12 @@ export default function MainScreen({
         storageReady,
         setIncomingProject,
         setIsLoadingProject,
-        setDialog,
+        setDialogPayload,
         isDirty,
         onDirtyChanged,
         resetHistory,
-        getScaledTranslations,
+        displaySize,
+        translation,
     };
 
     const {
@@ -306,19 +304,25 @@ export default function MainScreen({
     // Derived Values
     // ==================================================
 
-    const selectedPointIndex =
-        activeDataset?.points?.findIndex((p) => p.id === selectedPointRef?.pointId) || null;
+    //
+    // Data points
+    // --------------------------------------------------
     const pointCount = activeDataset?.points?.length || 0;
     const transformedActive = activeDataset.points
         .map((p) => transformPoint(p, calibration))
-        .filter(Boolean);
-    const regressionInput = prepareRegressionPoints(transformedActive, calibration);
-    const linearFit = linearRegression(regressionInput);
-    const predictor = getRegressionPredictor(linearFit, calibration);
-    const linearR2 = linearFit ? computeR2(transformedActive, predictor) : null;
-    const stats = computeStats(activeDataset?.points || []);
+        .filter((item) => item != null);
     const selectedPointData = getSelectedPointData();
     const graphPoint = selectedPointData ? transformPoint(selectedPointData, calibration) : null;
+    const selectedPointIndex =
+        activeDataset?.points?.findIndex((p) => p.id === selectedPointRef?.pointId) || null;
+    //
+    // Analysis
+    // --------------------------------------------------
+    const regressionInput = prepareRegressionPoints(transformedActive, calibration);
+    const linearFit = linearRegression(regressionInput);
+    const predictor = linearFit != null ? getRegressionPredictor(linearFit, calibration) : null;
+    const linearR2 = predictor != null ? computeR2(transformedActive, predictor) : null;
+    const stats = computeStats(activeDataset?.points || [], calibration);
 
     // ==================================================
     // Effects
@@ -340,14 +344,6 @@ export default function MainScreen({
         void initializeStorage();
     }, []);
 
-    function getTabForMode(mode) {
-        if (mode === 'origin' || mode === 'xRef' || mode === 'yRef') {
-            return 'calibrate';
-        }
-
-        return 'edit';
-    }
-
     //
     // Load project
     // --------------------------------------------------
@@ -356,8 +352,8 @@ export default function MainScreen({
 
         setIsLoadingProject(true);
 
-        setDatasets(null);
-        setCalibration(null);
+        setDatasets([]);
+        setCalibration(DEFAULT_CALIBRATION);
         setImage(null);
 
         const hydrated = hydrateProject(incomingProject);
@@ -368,21 +364,20 @@ export default function MainScreen({
         setProjectUpdatedAt(hydrated.updatedAt ?? null);
 
         const hydratedOrigin = hydrated.calibration.origin ?? DEFAULT_CALIBRATION.origin;
-        const hydratedXref = hydrated.calibration.xRef ?? { x: LOGICAL_WIDTH - 10, y: null };
-        const hydratedYref = hydrated.calibration.yRef ?? { x: null, y: 10 };
+
         const hydratedX = hydrated.calibration.x ?? {
             scaleType: AxisScale.LINEAR,
             p0: null,
-            p1: hydratedXref.x,
-            value0: hydrated.axes?.x1 ?? 0,
-            value1: hydrated.axes?.x2 ?? LOGICAL_WIDTH,
+            p1: { x: LOGICAL_WIDTH - 10, y: null },
+            value0: 0,
+            value1: LOGICAL_WIDTH,
         };
         const hydratedY = hydrated.calibration.y ?? {
             scaleType: AxisScale.LINEAR,
             p0: null,
-            p1: hydratedYref.y,
-            value0: hydrated.axes?.y1 ?? 0,
-            value1: hydrated.axes?.y2 ?? LOGICAL_HEIGHT,
+            p1: { x: null, y: 10 },
+            value0: 0,
+            value1: LOGICAL_HEIGHT,
         };
 
         const hydratedCalibration = {
@@ -398,17 +393,13 @@ export default function MainScreen({
         const imageUri = hydrated.image;
 
         const translateX =
-            (ui.translateXscaled ?? null) != null
-                ? ui.translateXscaled * displaySize.width
-                : ui.translateX;
+            (ui.translateXscaled ?? null) != null ? ui.translateXscaled * displaySize.width : 0;
         const translateY =
-            (ui.translateYscaled ?? null) != null
-                ? ui.translateYscaled * displaySize.height
-                : ui.translateY;
+            (ui.translateYscaled ?? null) != null ? ui.translateYscaled * displaySize.height : 0;
 
         setProjectImage(imageUri, ui.zoomDisplay, translateX, translateY);
 
-        const loadedMode = ui.mode || 'points';
+        const loadedMode = (ui.mode as InteractionMode) || ('points' as InteractionMode);
         setMode(loadedMode);
         setWorkspaceTab(getTabForMode(loadedMode));
         setActiveDatasetId(ui.activeDatasetId || hydrated.datasets?.[0]?.id || null);
@@ -436,6 +427,14 @@ export default function MainScreen({
         resetHistory,
     ]);
 
+    function getTabForMode(mode: InteractionMode) {
+        if (mode === 'calibration') {
+            return 'calibrate';
+        }
+
+        return 'edit';
+    }
+
     //
     // Load image
     // --------------------------------------------------
@@ -453,81 +452,15 @@ export default function MainScreen({
     // ==================================================
     // Helper Functions
     // ==================================================
+    function handleRenameDataset() {
+        const active = datasets.find((d) => d.id === activeDatasetId);
 
-    //
-    // Stats
-    // --------------------------------------------------
-    function computeStats(points) {
-        if (!points.length) return null;
+        if (!active) {
+            return;
+        }
 
-        const transformed = points.map((p) => transformPoint(p, calibration)).filter(Boolean) || [];
-        const xs = transformed.map((p) => p.x);
-        const ys = transformed.map((p) => p.y);
-
-        return {
-            count: points.length,
-            minX: Math.min(...xs),
-            maxX: Math.max(...xs),
-            minY: Math.min(...ys),
-            maxY: Math.max(...ys),
-        };
-    }
-
-    //
-    // UI
-    // --------------------------------------------------
-    function centreView() {
-        translateX.value = 0;
-        translateY.value = 0;
-
-        savedTranslateX.value = 0;
-        savedTranslateY.value = 0;
-    }
-
-    const fitImage = useCallback(
-        (imgWidth, imgHeight, newZoom, newXTranslation, newYTranslation) => {
-            if (
-                displaySize.width === 0 ||
-                displaySize.height === 0 ||
-                imgWidth === 0 ||
-                imgHeight === 0
-            ) {
-                return;
-            }
-
-            const fitScale = Math.min(displaySize.width / imgWidth, displaySize.height / imgHeight);
-
-            const finalZoom = newZoom ?? 1;
-            const finalScale = finalZoom * fitScale;
-
-            setZoomDisplay(finalZoom);
-
-            scale.value = finalScale;
-            savedScale.value = finalScale;
-
-            const finalXTranslation = newXTranslation ?? 0;
-            const finalYTranslation = newYTranslation ?? 0;
-
-            translateX.value = finalXTranslation;
-            translateY.value = finalYTranslation;
-
-            savedTranslateX.value = finalXTranslation;
-            savedTranslateY.value = finalYTranslation;
-        },
-        [
-            displaySize.width,
-            displaySize.height,
-            scale,
-            savedScale,
-            translateX,
-            translateY,
-            savedTranslateX,
-            savedTranslateY,
-        ],
-    );
-
-    function fitCurrentImage() {
-        fitImage(imageWidth, imageHeight);
+        setRenameText(active.name);
+        setRenameDatasetVisible(true);
     }
 
     // ==================================================
@@ -553,11 +486,7 @@ export default function MainScreen({
                     <View style={styles.titleBarActions}>
                         <IconButton icon="save" onPress={handleSave} disabled={!isDirty} />
                         <IconButton icon="open" onPress={onOpenList} />
-                        <MenuButton
-                            icon="menu"
-                            onPress={() => setProjectMenuVisible(true)}
-                            disabled={!isDirty}
-                        />
+                        <MenuButton icon="menu" onPress={() => setProjectMenuVisible(true)} />
                     </View>
                 </View>
 
@@ -604,10 +533,10 @@ export default function MainScreen({
 
                                 activeDatasetId={activeDatasetId}
                                 selectedPointRef={selectedPointRef}
+                                setSelectedPointRef={setSelectedPointRef}
                                 transformedActive={transformedActive}
                                 regression={linearFit}
                                 showRegressionLine={showRegressionLine}
-                                setSelectedPointRef={setSelectedPointRef}
                                 commitPointDrag={commitPointDrag}
                                 commitCalibrationDrag={commitCalibrationDrag}
                                 addPoint={addPoint}
@@ -620,11 +549,11 @@ export default function MainScreen({
                                 savedTranslateY={savedTranslateY}
 
                                 displaySize={displaySize}
-                                imageHeight={imageHeight}
                                 setViewportSize={setViewportSize}
-                                imageWidth={imageWidth}
+                                imageSize={imageSize}
 
                                 setZoomDisplay={setZoomDisplay}
+                                setTranslation={setTranslation}
                             />
                         </View>
 
@@ -661,7 +590,7 @@ export default function MainScreen({
                                             </Text>
                                         </View>
 
-                                        {selectedPointData ? (
+                                        {selectedPointIndex ? (
                                             <Text style={styles.statusText}>
                                                 Point {selectedPointIndex + 1} / {pointCount}
                                             </Text>
@@ -671,13 +600,15 @@ export default function MainScreen({
                                     </>
                                 )}
 
-                                {mode !== 'points' && (
+                                {mode === 'calibration' && (
                                     <>
                                         <Text style={styles.statusText}>Calibrate mode</Text>
                                         <Text style={styles.statusText}>
-                                            {mode === 'origin' && '[Set origin]'}
-                                            {mode === 'xRef' && '[Set X reference]'}
-                                            {mode === 'yRef' && '[Set Y reference]'}
+                                            {calibrationSelection === 'origin' && '[Set origin]'}
+                                            {calibrationSelection === 'x0' && '[Set X0]'}
+                                            {calibrationSelection === 'x1' && '[Set X1]'}
+                                            {calibrationSelection === 'y0' && '[Set Y0]'}
+                                            {calibrationSelection === 'y1' && '[Set Y1]'}
                                         </Text>
                                     </>
                                 )}
@@ -703,7 +634,7 @@ export default function MainScreen({
                                 </View>
                             )}
 
-                            {mode === 'origin' && (
+                            {calibrationSelection === 'origin' && (
                                 <View style={styles.statusBarSection}>
                                     {calibration.origin ? (
                                         <Text style={styles.statusTextCoords}>
@@ -731,58 +662,58 @@ export default function MainScreen({
                                 </View>
                             )}
 
-                            {mode === 'xRef' && (
+                            {calibrationSelection[0] === 'x' && (
                                 <View style={styles.statusBarSection}>
-                                    {calibration.xRef ? (
+                                    {calibration.x.p0 ? (
                                         <Text style={styles.statusTextCoords}>
-                                            X:{' '}
-                                            {calibration.xRef.x
-                                                ? calibration.xRef.x.toFixed(1)
+                                            X0:{' '}
+                                            {calibration.x.p0
+                                                ? calibration.x.p0.toFixed(1)
                                                 : 'None'}
                                             %
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>X:</Text>
+                                        <Text style={styles.statusTextCoords}>X0:</Text>
                                     )}
 
-                                    {calibration.xRef ? (
+                                    {calibration.x.p1 ? (
                                         <Text style={styles.statusTextCoords}>
-                                            Y: (
-                                            {calibration.xRef.y
-                                                ? (100 - calibration.xRef.y).toFixed(1)
+                                            X1: (
+                                            {calibration.x.p1
+                                                ? (100 - calibration.x.p1).toFixed(1)
                                                 : 'None'}
                                             %)
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>Y:</Text>
+                                        <Text style={styles.statusTextCoords}>X1:</Text>
                                     )}
                                 </View>
                             )}
 
-                            {mode === 'yRef' && (
+                            {calibrationSelection[1] === 'y' && (
                                 <View style={styles.statusBarSection}>
-                                    {calibration.yRef ? (
+                                    {calibration.y.p0 ? (
                                         <Text style={styles.statusTextCoords}>
-                                            X: (
-                                            {calibration.yRef.x
-                                                ? calibration.yRef.x.toFixed(1)
-                                                : 'None'}
-                                            %)
-                                        </Text>
-                                    ) : (
-                                        <Text style={styles.statusTextCoords}>X:</Text>
-                                    )}
-
-                                    {calibration.yRef ? (
-                                        <Text style={styles.statusTextCoords}>
-                                            Y:{' '}
-                                            {calibration.yRef.y
-                                                ? (100 - calibration.yRef.y).toFixed(1)
+                                            Y0:{' '}
+                                            {calibration.y.p0
+                                                ? calibration.y.p0.toFixed(1)
                                                 : 'None'}
                                             %
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>Y:</Text>
+                                        <Text style={styles.statusTextCoords}>Y0:</Text>
+                                    )}
+
+                                    {calibration.y.p1 ? (
+                                        <Text style={styles.statusTextCoords}>
+                                            Y1: (
+                                            {calibration.y.p1
+                                                ? (100 - calibration.y.p1).toFixed(1)
+                                                : 'None'}
+                                            %)
+                                        </Text>
+                                    ) : (
+                                        <Text style={styles.statusTextCoords}>Y1:</Text>
                                     )}
                                 </View>
                             )}
@@ -852,7 +783,7 @@ export default function MainScreen({
                                         label="Calibrate"
                                         onPress={() => {
                                             setWorkspaceTab('calibrate');
-                                            setMode('origin');
+                                            setMode('calibration');
                                         }}
                                         active={workspaceTab === 'calibrate'}
                                     />
@@ -882,8 +813,7 @@ export default function MainScreen({
                                         projectCreatedAt={projectCreatedAt}
                                         projectUpdatedAt={projectUpdatedAt}
                                         image={image}
-                                        imageWidth={imageWidth}
-                                        imageHeight={imageHeight}
+                                        imageSize={imageSize}
                                         pickImage={pickImage}
                                         storageReady={storageReady}
                                         lastShare={lastShare}
@@ -901,7 +831,7 @@ export default function MainScreen({
                                         toggleCurveVisibility={toggleCurveVisibility}
                                         toggleDatasetVisibility={toggleDatasetVisibility}
                                         toggleDatasetLock={toggleDatasetLock}
-                                        handleDeleteDataset={handleDeleteDataset}
+                                        handleDeleteDataset={deleteDataset}
                                         handleRenameDataset={handleRenameDataset}
                                         setColourPickerVisible={setColourPickerVisible}
                                         createDuplicateDataset={createDuplicateDataset}
@@ -948,8 +878,8 @@ export default function MainScreen({
                                         updateCalibrationValue={updateCalibrationValue}
                                         calibration={calibration}
                                         setCalibration={setCalibration}
-                                        mode={mode}
-                                        setMode={setMode}
+                                        calibrationSelection={calibrationSelection}
+                                        setCalibrationSelection={setCalibrationSelection}
                                         calibratedState={calibratedState}
                                         setCalibratedState={setCalibratedState}
                                         onDirtyChanged={onDirtyChanged}
@@ -979,7 +909,7 @@ export default function MainScreen({
                     initialValue={renameText}
                     confirmLabel="Rename"
                     onConfirm={(newName) => {
-                        confirmRenameDataset(newName);
+                        renameDataset(newName);
                         setRenameDatasetVisible(false);
                     }}
                     onCancel={() => setRenameDatasetVisible(false)}
@@ -1010,7 +940,7 @@ export default function MainScreen({
                     onCancel={() => setSaveAsVisible(false)}
                 />
 
-                {dialog?.type === 'share-confirm' && (
+                {dialogPayload?.type === 'share-confirm' && (
                     <Dialog
                         visible={true}
                         title="Share Project"
@@ -1018,7 +948,7 @@ export default function MainScreen({
                             {
                                 text: 'Cancel',
                                 onPress: () =>
-                                    setDialog({
+                                    setDialogPayload({
                                         type: null,
                                     }),
                             },
@@ -1026,7 +956,7 @@ export default function MainScreen({
                                 text: 'Upload',
                                 onPress: () => {
                                     handleShareProject();
-                                    setDialog({
+                                    setDialogPayload({
                                         type: 'share-progress',
                                     });
                                 },
@@ -1048,7 +978,7 @@ export default function MainScreen({
                     </Dialog>
                 )}
 
-                {dialog?.type === 'share-progress' && (
+                {dialogPayload?.type === 'share-progress' && (
                     <Dialog visible={true} title="Uploading project...">
                         <View
                             style={{
@@ -1062,7 +992,7 @@ export default function MainScreen({
                     </Dialog>
                 )}
 
-                {dialog?.type === 'share-success' && (
+                {dialogPayload?.type === 'share-success' && (
                     <Dialog
                         visible={true}
                         title="Project shared"
@@ -1070,7 +1000,7 @@ export default function MainScreen({
                             {
                                 text: 'Close',
                                 onPress: () => {
-                                    setDialog({
+                                    setDialogPayload({
                                         type: null,
                                     });
                                 },
@@ -1078,22 +1008,28 @@ export default function MainScreen({
                             {
                                 text: justCopied ? 'Copied!' : 'Copy ID',
                                 onPress: async () => {
-                                    await Clipboard.setStringAsync(dialog.share.shareId);
-                                    setJustCopied(true);
+                                    if (dialogPayload.shareResponse?.shareId) {
+                                        await Clipboard.setStringAsync(
+                                            dialogPayload.shareResponse.shareId,
+                                        );
+                                        setJustCopied(true);
 
-                                    setTimeout(() => {
-                                        setJustCopied(false);
-                                    }, 2000);
+                                        setTimeout(() => {
+                                            setJustCopied(false);
+                                        }, 2000);
+                                    }
                                 },
                             },
                         ]}
                     >
                         <Text style={styles.paragraph}>Share ID:</Text>
-                        <Text style={styles.sectionTitle}>{dialog.share.shareId}</Text>
+                        <Text style={styles.sectionTitle}>
+                            {dialogPayload.shareResponse?.shareId ?? '(Error)'}
+                        </Text>
                     </Dialog>
                 )}
 
-                {dialog?.type === 'import-input' && (
+                {dialogPayload?.type === 'import-input' && (
                     <TextInputModal
                         visible={true}
                         title="Enter the Share ID:"
@@ -1101,12 +1037,12 @@ export default function MainScreen({
                         confirmLabel="Import"
                         onConfirm={(shareId) => {
                             handleImportProject(shareId);
-                            setDialog({
+                            setDialogPayload({
                                 type: 'import-progress',
                             });
                         }}
                         onCancel={() =>
-                            setDialog({
+                            setDialogPayload({
                                 type: null,
                             })
                         }
@@ -1114,7 +1050,7 @@ export default function MainScreen({
                     />
                 )}
 
-                {dialog?.type === 'import-progress' && (
+                {dialogPayload?.type === 'import-progress' && (
                     <Dialog visible={true} title="Downloading project...">
                         <View
                             style={{
@@ -1128,7 +1064,7 @@ export default function MainScreen({
                     </Dialog>
                 )}
 
-                {dialog?.type === 'import-success' && (
+                {dialogPayload?.type === 'import-success' && (
                     <Dialog
                         visible={true}
                         title="Download complete"
@@ -1136,7 +1072,7 @@ export default function MainScreen({
                             {
                                 text: 'Close',
                                 onPress: () => {
-                                    setDialog({
+                                    setDialogPayload({
                                         type: null,
                                     });
                                 },
@@ -1144,26 +1080,26 @@ export default function MainScreen({
                         ]}
                     >
                         <Text style={styles.statusText}>Project:</Text>
-                        <Text style={styles.paragraph}>"{dialog.name || '(No name)'}"</Text>
+                        <Text style={styles.paragraph}>"{dialogPayload.name || '(No name)'}"</Text>
                     </Dialog>
                 )}
 
-                {dialog?.type === 'error' && (
+                {dialogPayload?.type === 'error' && (
                     <Dialog
                         visible={true}
-                        title={dialog.title}
+                        title={dialogPayload.title ?? 'Error'}
                         buttons={[
                             {
                                 text: 'Close',
                                 onPress: () => {
-                                    setDialog({
+                                    setDialogPayload({
                                         type: null,
                                     });
                                 },
                             },
                         ]}
                     >
-                        <Text style={styles.paragraph}>{dialog.message}</Text>
+                        <Text style={styles.paragraph}>{dialogPayload.message}</Text>
                     </Dialog>
                 )}
 
@@ -1184,7 +1120,7 @@ export default function MainScreen({
                         setProjectMenuVisible(false);
                     }}
                     handleCloseProject={() => {
-                        handleCloseProject(true);
+                        handleCloseProject();
                         setProjectMenuVisible(false);
                     }}
                     handleNewProject={() => {
@@ -1192,7 +1128,7 @@ export default function MainScreen({
                         setProjectMenuVisible(false);
                     }}
                     handleShareProject={() => {
-                        setDialog({
+                        setDialogPayload({
                             type: 'share-confirm',
                         });
                         setProjectMenuVisible(false);
@@ -1213,7 +1149,7 @@ export default function MainScreen({
                                     text: 'Discard',
                                     style: 'destructive',
                                     onPress: () => {
-                                        setDialog({
+                                        setDialogPayload({
                                             type: 'import-input',
                                         });
                                     },
@@ -1222,7 +1158,7 @@ export default function MainScreen({
 
                             return;
                         } else {
-                            setDialog({
+                            setDialogPayload({
                                 type: 'import-input',
                             });
                         }
@@ -1287,13 +1223,11 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingHorizontal: SPACING.md,
         borderColor: COLOURS.border,
-        backgroundColor: COLOURS.surfaceTools,
     },
 
     workspaceToolContainer: {
         flex: 1,
         paddingHorizontal: 8,
-        backgroundColor: COLOURS.surfaceToolsContiner,
         borderBottomWidth: 1,
         borderColor: COLOURS.border,
     },

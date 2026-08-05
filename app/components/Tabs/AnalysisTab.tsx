@@ -14,19 +14,6 @@ import { formatRegressionEquation } from '../../analysis/equationFormatter';
 import { generateSimpleCSV } from '../../export/csv';
 import { AxisScale } from '../../calibration/constants';
 
-interface Props {
-    datasets: Dataset[];
-    activeDataset: Dataset | null;
-    stats: DatasetStatistics;
-    linearFit: LinearRegressionResult;
-    linearR2: number;
-    calibration: Calibration;
-    calibratedState: boolean;
-    showRegressionLine: boolean;
-    setShowRegressionLine: React.Dispatch<React.SetStateAction<boolean>>;
-    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
-}
-
 function getRegressionModelType(calibration: Calibration): string {
     if (calibration.x.scaleType === AxisScale.LINEAR) {
         if (calibration.y.scaleType === AxisScale.LINEAR) {
@@ -45,6 +32,19 @@ function getRegressionModelType(calibration: Calibration): string {
     }
 
     return '';
+}
+
+interface Props {
+    datasets: Dataset[];
+    activeDataset: Dataset | null;
+    stats: DatasetStatistics | null;
+    linearFit: LinearRegressionResult | null;
+    linearR2: number | null;
+    calibration: Calibration;
+    calibratedState: boolean;
+    showRegressionLine: boolean;
+    setShowRegressionLine: React.Dispatch<React.SetStateAction<boolean>>;
+    onDirtyChanged: (newValue: boolean) => void;
 }
 
 export default function AnalysisTab({

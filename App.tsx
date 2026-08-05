@@ -10,7 +10,7 @@ export default function App() {
     const [isProjectListVisible, setIsProjectListVisible] = useState(false);
     const [incomingProject, setIncomingProject] = useState<StoredProject | null>(null);
     const [isDirty, setIsDirty] = useState(false);
-    const [currentProjectId, setCurrentProjectId] = useState(null);
+    const [currentProjectId, setCurrentProjectId] = useState<string | null>(null);
 
     const loadProjectById = async (id: string) => {
         try {

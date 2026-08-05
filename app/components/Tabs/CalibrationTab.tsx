@@ -6,22 +6,27 @@ import AppIcon from '../AppIcon';
 import IconButton from '../IconButton';
 import { AxisScale } from '../../calibration/constants';
 import { TextInputModal } from '../Modals';
-import { Calibration } from '../../calibration/types';
+import {
+    Calibration,
+    CalibrationAxis,
+    CalibrationSelection,
+    NumericCalibrationKey,
+} from '../../calibration/types';
 
 interface Props {
     updateCalibrationValue: (
-        axis: string,
-        key: string,
-        value: number | string | AxisScale,
+        axis: CalibrationAxis,
+        key: NumericCalibrationKey,
+        value: number,
     ) => boolean;
     calibration: Calibration;
     setCalibration: React.Dispatch<React.SetStateAction<Calibration>>;
-    mode: string;
-    setMode: React.Dispatch<React.SetStateAction<string>>;
+    calibrationSelection: CalibrationSelection;
+    setCalibrationSelection: React.Dispatch<React.SetStateAction<CalibrationSelection>>;
     calibratedState: boolean;
     setCalibratedState: React.Dispatch<React.SetStateAction<boolean>>;
-    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
-    nudgeCalibrationPoint: (mode: string, dx: number, dy: number) => void;
+    onDirtyChanged: (newValue: boolean) => void;
+    nudgeCalibrationPoint: (selection: CalibrationSelection, dx: number, dy: number) => void;
     zoomDisplay: number;
 }
 
@@ -29,8 +34,8 @@ export default function CalibrationTab({
     updateCalibrationValue,
     calibration,
     setCalibration,
-    mode,
-    setMode,
+    calibrationSelection,
+    setCalibrationSelection,
     calibratedState,
     setCalibratedState,
     onDirtyChanged,
@@ -116,8 +121,8 @@ export default function CalibrationTab({
                                                     ...prevCalibrationPoint,
                                                     p0: null,
                                                 };
-                                                if (mode === 'x0') {
-                                                    setMode('origin');
+                                                if (calibrationSelection === 'x0') {
+                                                    setCalibrationSelection('origin');
                                                 }
                                             }
                                             setCalibration((prev) => ({
@@ -215,8 +220,8 @@ export default function CalibrationTab({
                                                     ...prevCalibrationPoint,
                                                     p0: null,
                                                 };
-                                                if (mode === 'y0') {
-                                                    setMode('origin');
+                                                if (calibrationSelection === 'y0') {
+                                                    setCalibrationSelection('origin');
                                                 }
                                             }
                                             setCalibration((prev) => ({
@@ -272,8 +277,8 @@ export default function CalibrationTab({
                         >
                             <IconButton
                                 label="[Origin]"
-                                onPress={() => setMode('origin')}
-                                selected={mode === 'origin'}
+                                onPress={() => setCalibrationSelection('origin')}
+                                selected={calibrationSelection === 'origin'}
                             />
                             {!calibratedState && (
                                 <View style={{ justifyContent: 'center' }}>
@@ -288,20 +293,20 @@ export default function CalibrationTab({
                                     label="[X0]"
                                     onPress={() => {
                                         if (calibration.x.p0 !== null) {
-                                            setMode('x0');
+                                            setCalibrationSelection('x0');
                                         }
                                     }}
-                                    selected={mode === 'x0'}
+                                    selected={calibrationSelection === 'x0'}
                                     disabled={calibration.x.p0 === null}
                                 />
                                 <IconButton
                                     label="[Y0]"
                                     onPress={() => {
                                         if (calibration.y.p0 !== null) {
-                                            setMode('y0');
+                                            setCalibrationSelection('y0');
                                         }
                                     }}
-                                    selected={mode === 'y0'}
+                                    selected={calibrationSelection === 'y0'}
                                     disabled={calibration.y.p0 === null}
                                 />
                             </View>
@@ -311,15 +316,15 @@ export default function CalibrationTab({
                             <View style={[styles.calibrationCell]}>
                                 <IconButton
                                     label="[X1]"
-                                    onPress={() => setMode('x1')}
-                                    selected={mode === 'x1'}
+                                    onPress={() => setCalibrationSelection('x1')}
+                                    selected={calibrationSelection === 'x1'}
                                 />
                             </View>
                             <View style={[styles.calibrationCell]}>
                                 <IconButton
                                     label="[Y1]"
-                                    onPress={() => setMode('y1')}
-                                    selected={mode === 'y1'}
+                                    onPress={() => setCalibrationSelection('y1')}
+                                    selected={calibrationSelection === 'y1'}
                                 />
                             </View>
                         </View>
@@ -327,25 +332,41 @@ export default function CalibrationTab({
                         <View style={styles.pointControls}>
                             <IconButton
                                 icon="nudgeLeft"
-                                onPress={() => nudgeCalibrationPoint(mode, -1 / zoomDisplay, 0)}
-                                disabled={mode[0] === 'y'}
+                                onPress={() =>
+                                    nudgeCalibrationPoint(calibrationSelection, -1 / zoomDisplay, 0)
+                                }
+                                disabled={calibrationSelection[0] === 'y'}
                             />
                             <View>
                                 <IconButton
                                     icon="nudgeUp"
-                                    onPress={() => nudgeCalibrationPoint(mode, 0, -1 / zoomDisplay)}
-                                    disabled={mode[0] === 'x'}
+                                    onPress={() =>
+                                        nudgeCalibrationPoint(
+                                            calibrationSelection,
+                                            0,
+                                            -1 / zoomDisplay,
+                                        )
+                                    }
+                                    disabled={calibrationSelection[0] === 'x'}
                                 />
                                 <IconButton
                                     icon="nudgeDown"
-                                    onPress={() => nudgeCalibrationPoint(mode, 0, 1 / zoomDisplay)}
-                                    disabled={mode[0] === 'x'}
+                                    onPress={() =>
+                                        nudgeCalibrationPoint(
+                                            calibrationSelection,
+                                            0,
+                                            1 / zoomDisplay,
+                                        )
+                                    }
+                                    disabled={calibrationSelection[0] === 'x'}
                                 />
                             </View>
                             <IconButton
                                 icon="nudgeRight"
-                                onPress={() => nudgeCalibrationPoint(mode, 1 / zoomDisplay, 0)}
-                                disabled={mode[0] === 'y'}
+                                onPress={() =>
+                                    nudgeCalibrationPoint(calibrationSelection, 1 / zoomDisplay, 0)
+                                }
+                                disabled={calibrationSelection[0] === 'y'}
                             />
                         </View>
                     </View>

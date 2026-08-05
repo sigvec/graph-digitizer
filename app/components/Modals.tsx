@@ -186,7 +186,7 @@ interface DialogProps {
     visible: boolean;
     title: string;
     children: ReactNode;
-    buttons: { text: string; onPress: () => void }[];
+    buttons?: { text: string; onPress: () => void }[];
 }
 
 export function Dialog({ visible = false, title = '', children, buttons }: DialogProps) {

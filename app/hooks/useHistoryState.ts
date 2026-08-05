@@ -1,15 +1,21 @@
 import { useState, useEffect, useCallback } from 'react';
-import { Dataset } from '../datasets/types';
-import { Calibration } from '../calibration/types';
+import type { Dataset } from '../datasets/types';
+import type { Calibration } from '../calibration/types';
+
+type HistorySnapshot = {
+    datasets: Dataset[];
+    calibration: Calibration;
+    image: string | null;
+};
 
 interface useHistoryStateProps {
     datasets: Dataset[];
     calibration: Calibration;
-    image: string;
-    setDatasets: React.Dispatch<React.SetStateAction<Dataset[]>>;
-    setCalibration: React.Dispatch<React.SetStateAction<Calibration>>;
-    setProjectImage: React.Dispatch<React.SetStateAction<string>>;
-    onDirtyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+    image: string | null;
+    setDatasets: (datasets: Dataset[]) => void;
+    setCalibration: (calibration: Calibration) => void;
+    setProjectImage: (image: string | null) => void;
+    onDirtyChanged: (newValue: boolean) => void;
     isProcessingProject: boolean;
 }
 
@@ -27,8 +33,43 @@ export function useHistoryState({
     const [historyIndex, setHistoryIndex] = useState(-1);
     const [isRestoringHistory, setIsRestoringHistory] = useState(false);
 
-    const currentSnapshot = { datasets, calibration, image };
-    const snapshotString = JSON.stringify(currentSnapshot);
+    const snapshotString = JSON.stringify({
+        datasets,
+        calibration,
+        image,
+    } satisfies HistorySnapshot);
+
+    function restoreSnapshot(snapshotString: string) {
+        setIsRestoringHistory(true);
+
+        const snapshot: HistorySnapshot = JSON.parse(snapshotString);
+
+        setDatasets(snapshot.datasets);
+        setCalibration(snapshot.calibration);
+        setProjectImage(snapshot.image);
+
+        onDirtyChanged(true);
+        setIsRestoringHistory(false);
+    }
+
+    function handleUndo() {
+        if (historyIndex <= 0) return;
+
+        restoreSnapshot(history[historyIndex - 1]);
+        setHistoryIndex(historyIndex - 1);
+    }
+
+    function handleRedo() {
+        if (historyIndex >= history.length - 1) return;
+
+        restoreSnapshot(history[historyIndex + 1]);
+        setHistoryIndex(historyIndex + 1);
+    }
+
+    const resetHistory = useCallback((baseSnapshotString: string) => {
+        setHistory([baseSnapshotString]);
+        setHistoryIndex(0);
+    }, []);
 
     const commitHistorySnapshot = useCallback(
         (snapshotString: string) => {
@@ -53,43 +94,6 @@ export function useHistoryState({
 
         commitHistorySnapshot(snapshotString);
     }, [snapshotString, isRestoringHistory, isProcessingProject, commitHistorySnapshot]);
-
-    const handleUndo = useCallback(() => {
-        if (historyIndex <= 0) return;
-
-        setIsRestoringHistory(true);
-
-        const previous = JSON.parse(history[historyIndex - 1]);
-
-        setDatasets(previous.datasets);
-        setCalibration(previous.calibration);
-        setProjectImage(previous.image);
-        setHistoryIndex(historyIndex - 1);
-        onDirtyChanged(true);
-
-        setIsRestoringHistory(false);
-    }, [history, historyIndex, setDatasets, setCalibration, setProjectImage, onDirtyChanged]);
-
-    const handleRedo = useCallback(() => {
-        if (historyIndex >= history.length - 1) return;
-
-        setIsRestoringHistory(true);
-
-        const next = JSON.parse(history[historyIndex + 1]);
-
-        setDatasets(next.datasets);
-        setCalibration(next.calibration);
-        setProjectImage(next.image);
-        setHistoryIndex(historyIndex + 1);
-        onDirtyChanged(true);
-
-        setIsRestoringHistory(false);
-    }, [history, historyIndex, setDatasets, setCalibration, setProjectImage, onDirtyChanged]);
-
-    const resetHistory = useCallback((baseSnapshotString: string) => {
-        setHistory([baseSnapshotString]);
-        setHistoryIndex(0);
-    }, []);
 
     return {
         canUndo: historyIndex > 0,
