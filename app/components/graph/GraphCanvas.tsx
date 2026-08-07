@@ -9,14 +9,15 @@ import { RegressionLine } from './RegressionLine';
 import type { Point, InteractionMode } from '../../types/geometry';
 import type { Calibration, CalibrationSelection } from '../../calibration/types';
 import type { Dataset } from '../../datasets/types';
-import type { LinearRegressionResult, Coords } from '../../analysis/types';
+import type { LinearRegressionResult } from '../../analysis/types';
 import type { SharedCalibrationPoints } from './DraggableCalibrationPoint';
 import { DraggableCalibrationPoint } from './DraggableCalibrationPoint';
 import { AnimatedCalibrationAxis } from './AnimatedCalibrationAxis';
 import { DraggablePoint } from './DraggablePoint';
 import { AnimatedDatasetPath } from './AnimatedDatasetPath';
 import { useCanvasGestures } from './useCanvasGestures';
-import { ImageSize } from '../../image/useImageManager';
+import type { ImageSize } from '../../image/useImageManager';
+import { DraggableCrosshairGuide } from './DraggableCrosshairGuide';
 
 interface GraphCanvasProps {
     image: string | null;
@@ -26,6 +27,7 @@ interface GraphCanvasProps {
     calibration: Calibration;
     currentMode: InteractionMode;
     activeDatasetId: string | null;
+    activeDataset: Dataset | null;
     selectedPointRef: {
         datasetId: string;
         pointId: string;
@@ -72,6 +74,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
         calibration,
         currentMode,
         activeDatasetId,
+        activeDataset,
         selectedPointRef,
         transformedActive,
         regression,
@@ -139,14 +142,14 @@ export default function GraphCanvas(props: GraphCanvasProps) {
         };
     }, [calibration, sharedCalibrationPoints]);
 
-    const sharedDatasets = useSharedValue<Coords[][]>([]);
+    const sharedDatasets = useSharedValue<Dataset[]>([]);
     useEffect(() => {
-        sharedDatasets.value = datasets.map((dataset) =>
-            dataset.points.map((point) => ({
-                x: point.x,
-                y: point.y,
+        sharedDatasets.value = datasets.map((dataset) => ({
+            ...dataset,
+            points: dataset.points.map((point) => ({
+                ...point,
             })),
-        );
+        }));
     }, [datasets, sharedDatasets]);
 
     return (
@@ -289,7 +292,30 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                     sharedCalibrationPoints={sharedCalibrationPoints}
                                     onDragComplete={commitCalibrationDrag}
                                 />
-
+                                <DraggableCrosshairGuide
+                                    axis={'x'}
+                                    isEnabled={
+                                        currentMode === 'points' && activeDataset?.locked === false
+                                    }
+                                    scale={scale}
+                                    imageWidth={imageWidth}
+                                    imageHeight={imageHeight}
+                                    sharedDatasets={sharedDatasets}
+                                    onDragComplete={commitPointDrag}
+                                    selectedPointRef={selectedPointRef}
+                                />
+                                <DraggableCrosshairGuide
+                                    axis={'y'}
+                                    isEnabled={
+                                        currentMode === 'points' && activeDataset?.locked === false
+                                    }
+                                    scale={scale}
+                                    imageWidth={imageWidth}
+                                    imageHeight={imageHeight}
+                                    sharedDatasets={sharedDatasets}
+                                    onDragComplete={commitPointDrag}
+                                    selectedPointRef={selectedPointRef}
+                                />
                                 {showRegressionLine &&
                                     regression != null &&
                                     regression.intercept != null &&
@@ -321,7 +347,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                         <Svg key={d.id} style={[StyleSheet.absoluteFill]}>
                                             <AnimatedDatasetPath
                                                 datasetIndex={datasetIndex}
-                                                sharedDatasetPoints={sharedDatasets}
+                                                sharedDatasets={sharedDatasets}
                                                 imageWidth={imageWidth}
                                                 imageHeight={imageHeight}
                                                 curveMode={d.curveMode}
@@ -355,7 +381,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                                 scale={scale}
                                                 imageWidth={imageWidth}
                                                 imageHeight={imageHeight}
-                                                sharedDatasetPoints={sharedDatasets}
+                                                sharedDatasets={sharedDatasets}
                                                 onDragComplete={commitPointDrag}
                                                 setSelectedPointRef={setSelectedPointRef}
                                             />

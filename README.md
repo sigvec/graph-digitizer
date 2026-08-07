@@ -25,13 +25,6 @@ Live curve updates with auto snap-to-point.
 - Engineered pure utility calculation layers to translate raw pixel touch coordinates `(x, y)` into precise, calibrated mathematical units `(X, Y)`.
 - Handled edge cases for both linear scaling and logarithmic transformations depending on axis configuration.
 
-### Codebase Migration Status
-
-This project is actively transitioning from a prototype JavaScript codebase to a strictly typed TypeScript architecture.
-
-- **Current Status:** Phase 2 (Incremental Refactoring).
-- **Strategy:** Core calculation services, data layers, and sub-components are 100% strictly typed. The core orchestrator (`MainScreen`) and canvas rendering layers are systematically scheduled for conversion during feature updates to ensure continuous application stability.
-
 ## Engineering Trade-offs & Known Technical Debt
 
 - **State Complexity:** Canvas history handles deep objects (multiple datasets, undo/redo stacks). State is currently managed via custom local hooks. For enterprise scalability with massive coordinate sets, migrating this state layer to a dedicated manager like **Zustand** or **Redux Toolkit** would optimize re-render boundaries.
@@ -48,7 +41,7 @@ This project is actively transitioning from a prototype JavaScript codebase to a
 ## Features Breakdown
 
 - **Calibration:** One-point/Two-point axis calibration, linear and logarithmic options.
-- **Digitizing:** Multiple datasets, real-time spline curves, auto snap-to-curve, point nudging.
+- **Digitizing:** Multiple datasets, real-time spline curves, auto snap-to-curve, high-accuracty point adjustment.
 - **Analysis:** Linear regression, interpolation.
 - **Data Portability:** Local project storage, CSV export, and public link sharing.
 
@@ -69,6 +62,12 @@ Define graph axes and reference points for coordinate conversion.
 <p align="center">
   <img src="screenshots/calibration.png" width="350">
 </p>
+
+## Status
+
+Version 0.4.1
+
+This project is under active development. The current release supports local project storage and public project sharing.
 
 ## License
 

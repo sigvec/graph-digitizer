@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { View } from 'react-native';
 import { Gesture, GestureDetector } from 'react-native-gesture-handler';
 import Animated, {
@@ -9,7 +9,7 @@ import Animated, {
 } from 'react-native-reanimated';
 import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../../constants/geometry';
 import type { Point, InteractionMode } from '../../types/geometry';
-import { Coords } from '../../analysis/types';
+import type { Dataset } from '../../datasets/types';
 
 interface DraggablePointProps {
     item: Point;
@@ -24,7 +24,7 @@ interface DraggablePointProps {
     scale: SharedValue<number>;
     imageWidth: number;
     imageHeight: number;
-    sharedDatasetPoints: SharedValue<Coords[][]>;
+    sharedDatasets: SharedValue<Dataset[]>;
     onDragComplete: (id: string, x: number, y: number) => void;
     setSelectedPointRef: React.Dispatch<
         React.SetStateAction<{
@@ -47,26 +47,31 @@ export function DraggablePoint({
     scale,
     imageWidth,
     imageHeight,
-    sharedDatasetPoints,
+    sharedDatasets,
     onDragComplete,
     setSelectedPointRef,
 }: DraggablePointProps) {
-    // Use starting positions directly as initial shared values
-    const translateX = useSharedValue(item.x);
-    const translateY = useSharedValue(item.y);
+    const translateX = useSharedValue(0);
+    const translateY = useSharedValue(0);
 
     const contextX = useSharedValue(0);
     const contextY = useSharedValue(0);
 
-    const SLOP = 50;
+    const SLOP = 80;
 
     const isEnabled = !datasetIsLocked && datasetIsActive && mode === 'points';
     const panGesture = Gesture.Pan()
         .enabled(isEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
         .onStart(() => {
-            contextX.value = translateX.value;
-            contextY.value = translateY.value;
+            // Use starting positions directly as initial shared values
+            const sharedDataset = sharedDatasets.value.find((d) => d.id === datasetId);
+            const sharedPoint = sharedDataset?.points.find((p) => p.id === item.id);
+            const itemX = sharedPoint?.x ?? 0;
+            const itemY = sharedPoint?.y ?? 0;
+
+            contextX.value = itemX;
+            contextY.value = itemY;
 
             runOnJS(setSelectedPointRef)({
                 datasetId: datasetId,
@@ -79,8 +84,9 @@ export function DraggablePoint({
             translateY.value =
                 contextY.value + (event.translationY * LOGICAL_HEIGHT) / imageHeight / scale.value;
 
-            sharedDatasetPoints.modify((value) => {
-                value[datasetIndex][pointIndex] = {
+            sharedDatasets.modify((value) => {
+                value[datasetIndex].points[pointIndex] = {
+                    id: item.id,
                     x: translateX.value,
                     y: translateY.value,
                 };
@@ -135,64 +141,32 @@ export function DraggablePoint({
         zIndex: 3,
     };
 
-    const animatedProps = useAnimatedStyle(() => ({
-        transform: [
-            { translateX: (translateX.value * imageWidth) / LOGICAL_WIDTH },
-            { translateY: (translateY.value * imageHeight) / LOGICAL_HEIGHT },
-            { scale: 0.1 / scale.value },
-        ],
-    }));
-
-    const cursorHorProps = useAnimatedStyle(() => ({
-        position: 'absolute',
-        left: 0,
-        top: (translateY.value * imageHeight) / LOGICAL_HEIGHT - 1 / scale.value,
-        width: imageWidth,
-        height: 2 / scale.value,
-        backgroundColor: '#535353',
-        opacity: 0.2,
-    }));
-
-    const cursorVerProps = useAnimatedStyle(() => ({
-        position: 'absolute',
-        left: (translateX.value * imageWidth) / LOGICAL_HEIGHT - 1 / scale.value,
-        top: 0,
-        width: 2 / scale.value,
-        height: imageHeight,
-        backgroundColor: '#535353',
-        opacity: 0.2,
-    }));
-
-    useEffect(() => {
-        // If the parent state changes externally, sync the shared values
-        translateX.value = item.x;
-        translateY.value = item.y;
-    }, [item.x, item.y, translateX, translateY]);
+    const animatedProps = useAnimatedStyle(() => {
+        const sharedDataset = sharedDatasets.value.find((d) => d.id === datasetId);
+        const sharedPoint = sharedDataset?.points.find((p) => p.id === item.id);
+        const itemX = sharedPoint?.x ?? 0;
+        const itemY = sharedPoint?.y ?? 0;
+        return {
+            transform: [
+                { translateX: (itemX * imageWidth) / LOGICAL_WIDTH },
+                { translateY: (itemY * imageHeight) / LOGICAL_HEIGHT },
+                { scale: 0.1 / scale.value },
+            ],
+        };
+    });
 
     return (
-        <>
-            {isSelected && (
-                <>
-                    {/* Horizontal line */}
-                    <Animated.View style={[cursorHorProps]} />
+        <GestureDetector gesture={panGesture}>
+            <Animated.View style={[containerStyle, animatedProps]}>
+                <View style={[ring, coreDot]} />
 
-                    {/* Vertical line */}
-                    <Animated.View style={[cursorVerProps]} />
-                </>
-            )}
-
-            <GestureDetector gesture={panGesture}>
-                <Animated.View style={[containerStyle, animatedProps]}>
-                    <View style={[ring, coreDot]} />
-
-                    {datasetIsActive && (
-                        <>
-                            <View style={[ring, innerRing]} />
-                            <View style={[ring, outerRing]} />
-                        </>
-                    )}
-                </Animated.View>
-            </GestureDetector>
-        </>
+                {datasetIsActive && (
+                    <>
+                        <View style={[ring, innerRing]} />
+                        <View style={[ring, outerRing]} />
+                    </>
+                )}
+            </Animated.View>
+        </GestureDetector>
     );
 }

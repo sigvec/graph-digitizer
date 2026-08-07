@@ -4,7 +4,6 @@ import { View, StyleSheet, Text, Switch } from 'react-native';
 import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
 import IconButton from '../IconButton';
 import type { Dataset } from '../../datasets/types';
-import type { Point } from '../../types/geometry';
 
 interface Props {
     activeDatasetId: string | null;
@@ -14,8 +13,7 @@ interface Props {
     setSelectedPointRef: React.Dispatch<
         React.SetStateAction<{ datasetId: string; pointId: string } | null>
     >;
-    selectedPointIndex: number | null;
-    selectedPointData: Point | undefined;
+    selectedPointIndex: number;
     pointCount: number;
 
     nudgePoint: (dx: number, dy: number) => void;
@@ -34,7 +32,6 @@ export default function PointTab({
     selectedPointRef,
     setSelectedPointRef,
     selectedPointIndex,
-    selectedPointData,
     pointCount,
 
     nudgePoint,
@@ -79,7 +76,7 @@ export default function PointTab({
                 <IconButton
                     icon="previous"
                     onPress={() => {
-                        if (!selectedPointIndex) {
+                        if (selectedPointIndex < 0) {
                             return;
                         }
                         const prevIndex =
@@ -90,9 +87,9 @@ export default function PointTab({
                             pointId: activeDataset.points[prevIndex].id || '',
                         });
                     }}
-                    disabled={!selectedPointRef}
+                    disabled={selectedPointIndex < 0}
                 />
-                {selectedPointIndex ? (
+                {selectedPointIndex >= 0 ? (
                     <Text
                         style={[
                             {
@@ -110,7 +107,7 @@ export default function PointTab({
                 <IconButton
                     icon="next"
                     onPress={() => {
-                        if (!selectedPointIndex) {
+                        if (selectedPointIndex < 0) {
                             return;
                         }
                         const nextIndex = (selectedPointIndex + 1) % activeDataset.points.length;
@@ -119,7 +116,7 @@ export default function PointTab({
                             pointId: activeDataset.points[nextIndex].id,
                         });
                     }}
-                    disabled={!selectedPointRef}
+                    disabled={selectedPointIndex < 0}
                 />
                 <View
                     style={[

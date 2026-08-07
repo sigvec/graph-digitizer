@@ -313,8 +313,9 @@ export default function MainScreen({
         .filter((item) => item != null);
     const selectedPointData = getSelectedPointData();
     const graphPoint = selectedPointData ? transformPoint(selectedPointData, calibration) : null;
-    const selectedPointIndex =
-        activeDataset?.points?.findIndex((p) => p.id === selectedPointRef?.pointId) || null;
+    const selectedPointIndex = activeDataset?.points?.findIndex(
+        (p) => p.id === selectedPointRef?.pointId,
+    );
     //
     // Analysis
     // --------------------------------------------------
@@ -532,6 +533,7 @@ export default function MainScreen({
                                 currentMode={mode}
 
                                 activeDatasetId={activeDatasetId}
+                                activeDataset={activeDataset}
                                 selectedPointRef={selectedPointRef}
                                 setSelectedPointRef={setSelectedPointRef}
                                 transformedActive={transformedActive}
@@ -848,7 +850,6 @@ export default function MainScreen({
                                         selectedPointRef={selectedPointRef}
                                         setSelectedPointRef={setSelectedPointRef}
                                         selectedPointIndex={selectedPointIndex}
-                                        selectedPointData={selectedPointData}
                                         pointCount={pointCount}
                                         nudgePoint={nudgePoint}
                                         nudgeAllPoints={nudgeAllPoints}

@@ -2,14 +2,14 @@ import React from 'react';
 import Animated, { useAnimatedProps, SharedValue } from 'react-native-reanimated';
 import { Path, PathProps } from 'react-native-svg';
 import type { CurveMode } from '../../datasets/constants';
-import type { Coords } from '../../analysis/types';
 import { pointsToPath } from '../../analysis/pointsToPath';
+import type { Dataset } from '../../datasets/types';
 
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 interface AnimatedDatasetPathProps {
     datasetIndex: number;
-    sharedDatasetPoints: SharedValue<Coords[][]>;
+    sharedDatasets: SharedValue<Dataset[]>;
     imageWidth: number;
     imageHeight: number;
     curveMode: CurveMode;
@@ -19,7 +19,7 @@ interface AnimatedDatasetPathProps {
 
 export function AnimatedDatasetPath({
     datasetIndex,
-    sharedDatasetPoints,
+    sharedDatasets,
     imageWidth,
     imageHeight,
     curveMode,
@@ -27,7 +27,7 @@ export function AnimatedDatasetPath({
     scale,
 }: AnimatedDatasetPathProps) {
     const animatedProps = useAnimatedProps<PathProps>(() => {
-        const points = sharedDatasetPoints.value[datasetIndex];
+        const points = sharedDatasets.value[datasetIndex].points;
         if (!points || points.length < 2) {
             return { d: '' };
         }
