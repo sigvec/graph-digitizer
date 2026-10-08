@@ -18,6 +18,7 @@ import { AnimatedDatasetPath } from './AnimatedDatasetPath';
 import { useCanvasGestures } from './useCanvasGestures';
 import type { ImageSize } from '../../image/useImageManager';
 import { DraggableCrosshairGuide } from './DraggableCrosshairGuide';
+import TracePreview from './TracePreview';
 
 interface GraphCanvasProps {
     image: string | null;
@@ -44,6 +45,9 @@ interface GraphCanvasProps {
     commitPointDrag: (id: string, x: number, y: number) => void;
     commitCalibrationDrag: (dragTarget: CalibrationSelection, x: number, y: number) => void;
     addPoint: (x: number, y: number) => void;
+    onCanvasTap?: (x: number, y: number) => void;
+    tracePreview: Point[];
+    traceStart: Point | null;
     scale: SharedValue<number>;
     translateX: SharedValue<number>;
     translateY: SharedValue<number>;
@@ -83,6 +87,9 @@ export default function GraphCanvas(props: GraphCanvasProps) {
         commitPointDrag,
         commitCalibrationDrag,
         addPoint,
+        onCanvasTap,
+        tracePreview,
+        traceStart,
         scale,
         translateX,
         translateY,
@@ -102,6 +109,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
     // Behaviour
     const gesture = useCanvasGestures({
         addPoint,
+        onTap: onCanvasTap,
         scale,
         translateX,
         translateY,
@@ -211,6 +219,15 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                         },
                                     ]}
                                 />
+
+                                {(tracePreview.length > 0 || traceStart) && (
+                                    <TracePreview
+                                        points={tracePreview}
+                                        start={traceStart}
+                                        imageWidth={imageWidth}
+                                        imageHeight={imageHeight}
+                                    />
+                                )}
 
                                 <AnimatedCalibrationAxis
                                     sharedCalibrationPoints={sharedCalibrationPoints}

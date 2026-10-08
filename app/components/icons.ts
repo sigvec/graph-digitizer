@@ -32,6 +32,7 @@ import {
     ChartLine,
     ChartSpline,
     CopyPlus,
+    Check,
     StepForward,
     StepBack,
 } from 'lucide-react-native';
@@ -71,6 +72,7 @@ export const Icons = {
     showCurveLine: ChartLine,
     showCurveSpline: ChartSpline,
     duplicate: CopyPlus,
+    check: Check,
     next: StepForward,
     previous: StepBack,
 } satisfies Record<string, LucideIcon>;

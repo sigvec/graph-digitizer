@@ -5,6 +5,7 @@ import { LOGICAL_WIDTH, LOGICAL_HEIGHT } from '../../constants/geometry';
 
 interface CanvasGesturesProps {
     addPoint: (x: number, y: number) => void;
+    onTap?: (x: number, y: number) => void;
     scale: SharedValue<number>;
     translateX: SharedValue<number>;
     translateY: SharedValue<number>;
@@ -23,6 +24,7 @@ interface CanvasGesturesProps {
 
 export function useCanvasGestures({
     addPoint,
+    onTap,
     scale,
     translateX,
     translateY,
@@ -117,7 +119,7 @@ export function useCanvasGestures({
                     (imageHeight ?? 1) +
                 LOGICAL_HEIGHT / 2;
 
-            runOnJS(addPoint)(x, y);
+            runOnJS(onTap ?? addPoint)(x, y);
         });
     const gesture = Gesture.Simultaneous(pan, pinch, tap);
 

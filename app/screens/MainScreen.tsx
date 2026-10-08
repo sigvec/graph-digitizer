@@ -24,6 +24,7 @@ import CalibrationTab from '../components/Tabs/CalibrationTab';
 import AnalysisTab from '../components/Tabs/AnalysisTab';
 import ProjectTab from '../components/Tabs/ProjectTab';
 import PointTab from '../components/Tabs/PointTab';
+import TraceTab from '../components/Tabs/TraceTab';
 import DatasetsTab from '../components/Tabs/DatasetsTab';
 import { TextInputModal, ProjectMenuModal, ColourPickerModal, Dialog } from '../components/Modals';
 import HelpModal from '../components/HelpModal';
@@ -51,6 +52,12 @@ import { InteractionMode } from '../types/geometry';
 import { LastShare } from '../project/types';
 import { CalibrationSelection } from '../calibration/types';
 import { ImageSize, useImageManager } from '../image/useImageManager';
+import type { Point } from '../types/geometry';
+import { generateId } from '../utils/id';
+import { CentrelineNavigationTracer } from '../../frontend/services/imageAnalysis/curveTracing/CentrelineNavigationTracer';
+import { createTraceImage } from '../../frontend/services/imageAnalysis/curveTracing/decodedImageTraceImage';
+import type { TracePoint } from '../../frontend/services/imageAnalysis/curveTracing/types';
+import { snapVector } from '../../frontend/services/imageAnalysis/snap';
 
 interface MainScreenProps {
     currentProjectId: string | null;
@@ -113,6 +120,9 @@ export default function MainScreen({
     const [nudgeAllPoints, setNudgeAllPoints] = useState(false);
     const [translation, setTranslation] = useState({ x: 0, y: 0 });
     const [mode, setMode] = useState<InteractionMode>('points');
+    const [tracePhase, setTracePhase] = useState<'idle' | 'awaitingDirection' | 'preview'>('idle');
+    const [traceStart, setTraceStart] = useState<Point | null>(null);
+    const [tracePreview, setTracePreview] = useState<Point[]>([]);
     //
     // Dialogs
     // --------------------------------------------------
@@ -143,6 +153,185 @@ export default function MainScreen({
     };
 
     const activeDataset = datasets.find((d) => d.id === activeDatasetId) || datasets[0];
+
+    const resetTrace = () => {
+        setTracePhase('idle');
+        setTraceStart(null);
+        setTracePreview([]);
+    };
+
+    // An in-progress trace is transient UI state, not part of project history.
+    // Undo cancels it first; only a subsequent Undo changes project data.
+    const handleUndoWithTraceCancel = () => {
+        if (tracePhase !== 'idle') {
+            resetTrace();
+            return;
+        }
+        handleUndo();
+    };
+
+    const startCurveTrace = () => {
+        // Recover if the project has no valid active dataset selected.
+        // Selecting it here keeps trace acceptance attached to a real dataset.
+        const selectedDataset = datasets.find((dataset) => dataset.id === activeDatasetId);
+        const fallbackDataset = selectedDataset ?? datasets[0];
+
+        if (!fallbackDataset) {
+            return;
+        }
+
+        if (!selectedDataset) {
+            setActiveDatasetId(fallbackDataset.id);
+        }
+
+        if (
+            mode !== 'points' ||
+            !image ||
+            !decodedImage.current ||
+            !fallbackDataset.visible ||
+            fallbackDataset.locked
+        ) {
+            return;
+        }
+
+        setTracePreview([]);
+        setTraceStart(null);
+        setTracePhase('awaitingDirection');
+    };
+
+    const handleTraceTap = (x: number, y: number) => {
+        if (tracePhase === 'idle') {
+            addPoint(x, y);
+            return;
+        }
+
+        if (tracePhase === 'preview') {
+            return;
+        }
+
+        if (!traceStart) {
+            const decoded = decodedImage.current;
+
+            const snap = decoded
+                ? snapVector(
+                      decoded,
+                      x / LOGICAL_WIDTH,
+                      y / LOGICAL_HEIGHT,
+                      1 /
+                          (Math.min(
+                              displaySize.width / (imageSize?.width ?? 1),
+                              displaySize.height / (imageSize?.height ?? 1),
+                          ) || 1),
+                      1 / (zoomDisplay || 1),
+                  )
+                : null;
+
+            const start = {
+                id: generateId(),
+                x: x + (snap?.dx ?? 0) * LOGICAL_WIDTH,
+                y: y + (snap?.dy ?? 0) * LOGICAL_HEIGHT,
+            };
+
+            setTraceStart(start);
+            return;
+        }
+
+        const direction = {
+            x: x - traceStart.x,
+            y: y - traceStart.y,
+        };
+
+        const directionLength = Math.sqrt(direction.x ** 2 + direction.y ** 2);
+
+        if (directionLength < 1) {
+            return;
+        }
+
+        const decoded = decodedImage.current;
+
+        if (!decoded) {
+            resetTrace();
+            return;
+        }
+
+        const traceImage = createTraceImage(decoded);
+        const imageStart: TracePoint = {
+            x: (traceStart.x * decoded.width) / LOGICAL_WIDTH,
+            y: (traceStart.y * decoded.height) / LOGICAL_HEIGHT,
+        };
+        const imageDirection = {
+            x: (direction.x * decoded.width) / LOGICAL_WIDTH,
+            y: (direction.y * decoded.height) / LOGICAL_HEIGHT,
+        };
+
+        const tracer = new CentrelineNavigationTracer();
+        const traceOptions = {
+            stepSize: 1,
+            searchRadius: 3,
+            maxPoints: 3000,
+        };
+
+        // Trace away from the selected point in the user-specified direction.
+        const forwardResult = tracer.trace(traceImage, imageStart, imageDirection, traceOptions);
+
+        // Trace the other half of the curve from the same point in the opposite direction.
+        const backwardResult = tracer.trace(
+            traceImage,
+            imageStart,
+            { x: -imageDirection.x, y: -imageDirection.y },
+            traceOptions,
+        );
+
+        // Reverse the backward half so the final path runs from its far endpoint,
+        // through the selected start point, to the forward endpoint. Omit its
+        // initial start point to avoid duplicating the join.
+        const combinedPoints = [
+            ...backwardResult.points.slice(1).reverse(),
+            ...forwardResult.points,
+        ];
+
+        const logicalPoints = combinedPoints.map((point) => ({
+            id: generateId(),
+            x: (point.x * LOGICAL_WIDTH) / decoded.width,
+            y: (point.y * LOGICAL_HEIGHT) / decoded.height,
+        }));
+
+        if (logicalPoints.length < 2) {
+            resetTrace();
+            return;
+        }
+
+        setTracePreview(logicalPoints);
+        setTracePhase('preview');
+    };
+
+    const acceptCurveTrace = () => {
+        if (tracePreview.length < 2 || !activeDataset.visible || activeDataset.locked) {
+            return;
+        }
+
+        // Keep every tenth point for the accepted dataset to reduce rendering
+        // and interaction costs, preserving only the two endpoints in addition
+        // to the regular decimation interval.
+        const acceptedPoints = tracePreview.filter(
+            (_, index) => index % 10 === 0 || index === tracePreview.length - 1,
+        );
+
+        setDatasets((prev) =>
+            prev.map((dataset) =>
+                dataset.id === activeDatasetId
+                    ? {
+                          ...dataset,
+                          points: [...dataset.points, ...acceptedPoints],
+                      }
+                    : dataset,
+            ),
+        );
+
+        onDirtyChanged(true);
+        setSelectedPointRef(null);
+        resetTrace();
+    };
 
     // ==================================================
     // Custom Hooks
@@ -496,8 +685,8 @@ export default function MainScreen({
                         <IconButton
                             icon="undo"
                             label="Undo"
-                            onPress={handleUndo}
-                            disabled={!canUndo}
+                            onPress={handleUndoWithTraceCancel}
+                            disabled={!canUndo && tracePhase === 'idle'}
                         />
                     </View>
 
@@ -542,6 +731,9 @@ export default function MainScreen({
                                 commitPointDrag={commitPointDrag}
                                 commitCalibrationDrag={commitCalibrationDrag}
                                 addPoint={addPoint}
+                                onCanvasTap={handleTraceTap}
+                                tracePreview={tracePreview}
+                                traceStart={traceStart}
 
                                 scale={scale}
                                 translateX={translateX}
@@ -782,6 +974,14 @@ export default function MainScreen({
                                         active={workspaceTab === 'edit'}
                                     />
                                     <TabButton
+                                        label="Trace"
+                                        onPress={() => {
+                                            setWorkspaceTab('trace');
+                                            setMode('points');
+                                        }}
+                                        active={workspaceTab === 'trace'}
+                                    />
+                                    <TabButton
                                         label="Calibrate"
                                         onPress={() => {
                                             setWorkspaceTab('calibrate');
@@ -856,6 +1056,17 @@ export default function MainScreen({
                                         setNudgeAllPoints={setNudgeAllPoints}
                                         handleDeletePoint={handleDeletePoint}
                                         zoomDisplay={zoomDisplay}
+                                    />
+                                )}
+
+                                {workspaceTab === 'trace' && (
+                                    <TraceTab
+                                        tracePhase={tracePhase}
+                                        onStartTrace={startCurveTrace}
+                                        onCancelTrace={resetTrace}
+                                        onAcceptTrace={acceptCurveTrace}
+                                        activeDataset={activeDataset}
+                                        tracePointCount={tracePreview.length}
                                     />
                                 )}
 
@@ -1121,10 +1332,12 @@ export default function MainScreen({
                         setProjectMenuVisible(false);
                     }}
                     handleCloseProject={() => {
+                        resetTrace();
                         handleCloseProject();
                         setProjectMenuVisible(false);
                     }}
                     handleNewProject={() => {
+                        resetTrace();
                         handleNewProject();
                         setProjectMenuVisible(false);
                     }}
@@ -1139,6 +1352,7 @@ export default function MainScreen({
                         setProjectMenuVisible(false);
                     }}
                     handleImportProject={() => {
+                        resetTrace();
                         setProjectMenuVisible(false);
                         if (isDirty) {
                             Alert.alert('Unsaved Changes', 'Discard current project changes?', [

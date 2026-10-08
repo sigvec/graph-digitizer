@@ -41,11 +41,19 @@ Live curve updates with auto snap-to-point.
 ## Features Breakdown
 
 - **Calibration:** One-point/Two-point axis calibration, linear and logarithmic options.
-- **Digitizing:** Multiple datasets, real-time spline curves, auto snap-to-curve, high-accuracty point adjustment.
+- **Digitizing:** Multiple datasets, real-time spline curves, auto snap-to-curve, auto curve trace, high-accuracty point adjustment.
 - **Analysis:** Linear regression, interpolation.
 - **Data Portability:** Local project storage, CSV export, and public link sharing.
 
 ## Screenshots
+
+### Curve Trace
+
+Tap a curve to trace it automatically.
+
+<p align="center">
+  <img src="screenshots/trace.gif" width="350">
+</p>
 
 ### Spline Interpolation
 
@@ -65,7 +73,7 @@ Define graph axes and reference points for coordinate conversion.
 
 ## Status
 
-Version 0.4.1
+Version 0.5.0
 
 This project is under active development. The current release supports local project storage and public project sharing.
 
