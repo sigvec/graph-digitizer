@@ -13,7 +13,7 @@ interface ProjectSharingProps {
     setDialogPayload: (share: {
         type: string | null;
         title?: string;
-        share?: ShareResponse;
+        shareResponse?: ShareResponse;
         name?: string;
         message?: string;
     }) => void;
@@ -59,7 +59,7 @@ export function useProjectSharing({
 
             setDialogPayload({
                 type: 'share-success',
-                share: share,
+                shareResponse: share,
             });
             const now = new Date().toISOString();
 
