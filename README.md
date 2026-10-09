@@ -73,7 +73,7 @@ Define graph axes and reference points for coordinate conversion.
 
 ## Status
 
-Version 0.5.0
+Version 0.5.1
 
 This project is under active development. The current release supports local project storage and public project sharing.
 

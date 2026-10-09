@@ -58,6 +58,10 @@ import { CentrelineNavigationTracer } from '../../frontend/services/imageAnalysi
 import { createTraceImage } from '../../frontend/services/imageAnalysis/curveTracing/decodedImageTraceImage';
 import type { TracePoint } from '../../frontend/services/imageAnalysis/curveTracing/types';
 import { snapVector } from '../../frontend/services/imageAnalysis/snap';
+import {
+    darkness,
+    luminance,
+} from '../../frontend/services/imageAnalysis/curveTracing/imageMetrics';
 
 interface MainScreenProps {
     currentProjectId: string | null;
@@ -123,6 +127,7 @@ export default function MainScreen({
     const [tracePhase, setTracePhase] = useState<'idle' | 'awaitingDirection' | 'preview'>('idle');
     const [traceStart, setTraceStart] = useState<Point | null>(null);
     const [tracePreview, setTracePreview] = useState<Point[]>([]);
+    const [traceDirectionMode, setTraceDirectionMode] = useState<'manual' | 'automatic'>('manual');
     //
     // Dialogs
     // --------------------------------------------------
@@ -199,19 +204,121 @@ export default function MainScreen({
         setTracePhase('awaitingDirection');
     };
 
+    const runCurveTrace = (start: Point, direction: { x: number; y: number }) => {
+        const directionLength = Math.hypot(direction.x, direction.y);
+        if (directionLength < 1) return;
+
+        const decoded = decodedImage.current;
+        if (!decoded) {
+            resetTrace();
+            return;
+        }
+
+        const traceImage = createTraceImage(decoded);
+        const imageStart: TracePoint = {
+            x: (start.x * decoded.width) / LOGICAL_WIDTH,
+            y: (start.y * decoded.height) / LOGICAL_HEIGHT,
+        };
+        const imageDirection = {
+            x: (direction.x * decoded.width) / LOGICAL_WIDTH,
+            y: (direction.y * decoded.height) / LOGICAL_HEIGHT,
+        };
+
+        const tracer = new CentrelineNavigationTracer();
+        const traceOptions = { stepSize: 1, searchRadius: 3, maxPoints: 3000 };
+        const forwardResult = tracer.trace(traceImage, imageStart, imageDirection, traceOptions);
+        const backwardResult = tracer.trace(
+            traceImage,
+            imageStart,
+            { x: -imageDirection.x, y: -imageDirection.y },
+            traceOptions,
+        );
+        const combinedPoints = [
+            ...backwardResult.points.slice(1).reverse(),
+            ...forwardResult.points,
+        ];
+        const logicalPoints = combinedPoints.map((point) => ({
+            id: generateId(),
+            x: (point.x * LOGICAL_WIDTH) / decoded.width,
+            y: (point.y * LOGICAL_HEIGHT) / decoded.height,
+        }));
+
+        if (logicalPoints.length < 2) {
+            resetTrace();
+            return;
+        }
+        setTracePreview(logicalPoints);
+        setTracePhase('preview');
+    };
+
+    // Estimate the local curve tangent with a weighted principal-axis fit of
+    // dark pixels around the snapped start. The sign is arbitrary because we
+    // trace in both directions from this vector.
+    const estimateTraceDirection = (
+        image: ReturnType<typeof createTraceImage>,
+        start: TracePoint,
+    ): { x: number; y: number } | null => {
+        const radius = 8;
+        let totalWeight = 0;
+        let meanX = 0;
+        let meanY = 0;
+        const samples: { x: number; y: number; weight: number }[] = [];
+
+        for (
+            let y = Math.max(0, Math.floor(start.y - radius));
+            y <= Math.min(image.height - 1, Math.ceil(start.y + radius));
+            y++
+        ) {
+            for (
+                let x = Math.max(0, Math.floor(start.x - radius));
+                x <= Math.min(image.width - 1, Math.ceil(start.x + radius));
+                x++
+            ) {
+                const dx = x - start.x;
+                const dy = y - start.y;
+                if (dx * dx + dy * dy > radius * radius) continue;
+                const weight = darkness(luminance(image.getPixel(x, y)));
+                if (weight < 0.35) continue;
+                samples.push({ x, y, weight });
+                totalWeight += weight;
+                meanX += x * weight;
+                meanY += y * weight;
+            }
+        }
+
+        if (samples.length < 3 || totalWeight === 0) return null;
+        meanX /= totalWeight;
+        meanY /= totalWeight;
+
+        let xx = 0;
+        let yy = 0;
+        let xy = 0;
+        for (const sample of samples) {
+            const dx = sample.x - meanX;
+            const dy = sample.y - meanY;
+            xx += sample.weight * dx * dx;
+            yy += sample.weight * dy * dy;
+            xy += sample.weight * dx * dy;
+        }
+
+        if (Math.max(xx, yy) < 1e-6) return null;
+        const angle = 0.5 * Math.atan2(2 * xy, xx - yy);
+        const direction = { x: Math.cos(angle), y: Math.sin(angle) };
+        // Reject nearly isotropic neighborhoods: their orientation is ambiguous.
+        const discriminant = Math.hypot(xx - yy, 2 * xy);
+        if (discriminant / (xx + yy || 1) < 0.12) return null;
+        return direction;
+    };
+
     const handleTraceTap = (x: number, y: number) => {
         if (tracePhase === 'idle') {
             addPoint(x, y);
             return;
         }
+        if (tracePhase === 'preview') return;
 
-        if (tracePhase === 'preview') {
-            return;
-        }
-
+        const decoded = decodedImage.current;
         if (!traceStart) {
-            const decoded = decodedImage.current;
-
             const snap = decoded
                 ? snapVector(
                       decoded,
@@ -225,84 +332,35 @@ export default function MainScreen({
                       1 / (zoomDisplay || 1),
                   )
                 : null;
-
             const start = {
                 id: generateId(),
                 x: x + (snap?.dx ?? 0) * LOGICAL_WIDTH,
                 y: y + (snap?.dy ?? 0) * LOGICAL_HEIGHT,
             };
-
-            setTraceStart(start);
+            if (traceDirectionMode === 'manual') {
+                setTraceStart(start);
+                return;
+            }
+            if (!decoded) {
+                resetTrace();
+                return;
+            }
+            const traceImage = createTraceImage(decoded);
+            const imageStart = {
+                x: (start.x * decoded.width) / LOGICAL_WIDTH,
+                y: (start.y * decoded.height) / LOGICAL_HEIGHT,
+            };
+            const direction = estimateTraceDirection(traceImage, imageStart);
+            if (!direction) {
+                // Fall back to asking for a direction if the local shape is ambiguous.
+                setTraceStart(start);
+                return;
+            }
+            runCurveTrace(start, direction);
             return;
         }
 
-        const direction = {
-            x: x - traceStart.x,
-            y: y - traceStart.y,
-        };
-
-        const directionLength = Math.sqrt(direction.x ** 2 + direction.y ** 2);
-
-        if (directionLength < 1) {
-            return;
-        }
-
-        const decoded = decodedImage.current;
-
-        if (!decoded) {
-            resetTrace();
-            return;
-        }
-
-        const traceImage = createTraceImage(decoded);
-        const imageStart: TracePoint = {
-            x: (traceStart.x * decoded.width) / LOGICAL_WIDTH,
-            y: (traceStart.y * decoded.height) / LOGICAL_HEIGHT,
-        };
-        const imageDirection = {
-            x: (direction.x * decoded.width) / LOGICAL_WIDTH,
-            y: (direction.y * decoded.height) / LOGICAL_HEIGHT,
-        };
-
-        const tracer = new CentrelineNavigationTracer();
-        const traceOptions = {
-            stepSize: 1,
-            searchRadius: 3,
-            maxPoints: 3000,
-        };
-
-        // Trace away from the selected point in the user-specified direction.
-        const forwardResult = tracer.trace(traceImage, imageStart, imageDirection, traceOptions);
-
-        // Trace the other half of the curve from the same point in the opposite direction.
-        const backwardResult = tracer.trace(
-            traceImage,
-            imageStart,
-            { x: -imageDirection.x, y: -imageDirection.y },
-            traceOptions,
-        );
-
-        // Reverse the backward half so the final path runs from its far endpoint,
-        // through the selected start point, to the forward endpoint. Omit its
-        // initial start point to avoid duplicating the join.
-        const combinedPoints = [
-            ...backwardResult.points.slice(1).reverse(),
-            ...forwardResult.points,
-        ];
-
-        const logicalPoints = combinedPoints.map((point) => ({
-            id: generateId(),
-            x: (point.x * LOGICAL_WIDTH) / decoded.width,
-            y: (point.y * LOGICAL_HEIGHT) / decoded.height,
-        }));
-
-        if (logicalPoints.length < 2) {
-            resetTrace();
-            return;
-        }
-
-        setTracePreview(logicalPoints);
-        setTracePhase('preview');
+        runCurveTrace(traceStart, { x: x - traceStart.x, y: y - traceStart.y });
     };
 
     const acceptCurveTrace = () => {
@@ -1063,10 +1121,13 @@ export default function MainScreen({
                                     <TraceTab
                                         tracePhase={tracePhase}
                                         onStartTrace={startCurveTrace}
+                                        directionMode={traceDirectionMode}
+                                        onDirectionModeChange={setTraceDirectionMode}
                                         onCancelTrace={resetTrace}
                                         onAcceptTrace={acceptCurveTrace}
                                         activeDataset={activeDataset}
                                         tracePointCount={tracePreview.length}
+                                        hasTraceStart={traceStart !== null}
                                     />
                                 )}
 

@@ -5,7 +5,7 @@ import { transformPoint } from '../calibration/transform';
 import { ProjectExportData } from './types';
 
 import Constants from 'expo-constants';
-const APP_VERSION = Constants.expoConfig?.version ?? '0.5.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '0.5.1';
 const PROJECT_FORMAT_VERSION = 1;
 
 export function buildProjectExport(projectData: ProjectExportData): Project {
