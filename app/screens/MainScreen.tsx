@@ -33,7 +33,7 @@ import { transformPoint, getRegressionPredictor } from '../calibration/transform
 import { computeStats } from '../analysis/stats';
 import { linearRegression, computeR2 } from '../analysis/regression';
 import { prepareRegressionPoints } from '../analysis/prepareRegressionPoints';
-import { loadAllProjects } from '../../frontend/services/storage/localStorage';
+import { loadAllProjectsForCleanup } from '../../frontend/services/storage/localStorage';
 import { removeOrphanedImages } from '../../frontend/services/storage/imageStorage';
 import { hydrateProject } from '../utils/projectTransform';
 import { loadDecodedImage } from '../../frontend/services/imageAnalysis/imageLoader';
@@ -582,7 +582,7 @@ export default function MainScreen({
     useEffect(() => {
         async function initializeStorage() {
             try {
-                const projects = await loadAllProjects();
+                const projects = await loadAllProjectsForCleanup();
                 await removeOrphanedImages(projects);
             } catch (error) {
                 console.error('Image cleanup failed:', error);

@@ -3,6 +3,7 @@ export const AxisScale = Object.freeze({
     LOG: 'log',
 } as const);
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare -- intentional const/type pair
 export type AxisScale = (typeof AxisScale)[keyof typeof AxisScale];
 
 export const Axis = Object.freeze({
@@ -10,4 +11,5 @@ export const Axis = Object.freeze({
     Y: 'Y',
 } as const);
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare -- intentional const/type pair
 export type Axis = (typeof Axis)[keyof typeof Axis];

@@ -1,6 +1,6 @@
 {
     "name": "graph-digitizer",
-    "version": "0.5.1",
+    "version": "0.5.2",
     "main": "index.js",
     "scripts": {
         "start": "expo start",
@@ -12,6 +12,9 @@
         "lint:fix": "eslint . --fix",
         "format": "prettier . --write",
         "format:check": "prettier . --check"
+    },
+    "jest": {
+        "preset": "jest-expo"
     },
     "dependencies": {
         "@react-native-async-storage/async-storage": "2.2.0",

@@ -2,13 +2,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { generateId } from '../../../app/utils/id';
 import type { Project, StoredProject } from '../sharing/Project';
+import { validateProject, validateStoredProject } from '../sharing/validateProject';
 import type { SaveProjectResponse } from './SaveProjectResponse';
-import { AxisScale } from '../../../app/calibration/constants';
-import { LOGICAL_HEIGHT, LOGICAL_WIDTH } from '../../../app/constants/geometry';
 
 const PROJECT_PREFIX = 'project:';
 
 export async function saveProject(project: Project): Promise<SaveProjectResponse> {
+    const validation = validateProject(project);
+    if (!validation.valid) {
+        throw new Error(`Cannot save invalid V1 project: ${validation.errors.join('; ')}`);
+    }
+
     const now = new Date().toISOString();
 
     const id = generateId();
@@ -37,93 +41,118 @@ export async function loadProject(id: string): Promise<StoredProject> {
     }
 
     try {
-        const rawObject = JSON.parse(json);
-
-        if (rawObject && typeof rawObject === 'object') {
-            if ('color' in rawObject) {
-                if (!('colour' in rawObject)) {
-                    rawObject.colour = rawObject.color;
-                }
-                delete rawObject.color;
-            }
+        const parsed: unknown = JSON.parse(json);
+        const validation = validateStoredProject(parsed);
+        if (!validation.valid) {
+            throw new Error(`Invalid V1 project: ${validation.errors.join('; ')}`);
         }
-
-        if (
-            rawObject?.calibration &&
-            rawObject.calibration === 'object' &&
-            'xRef' in rawObject.calibration
-        ) {
-            if (
-                rawObject?.calibration &&
-                rawObject.calibration === 'object' &&
-                !('x' in rawObject.calibration)
-            ) {
-                rawObject.calibration.x = {
-                    scaleType: AxisScale.LINEAR,
-                    p0: null,
-                    p1: rawObject.calibration.xRef.x ?? LOGICAL_WIDTH - 10,
-                    value0: rawObject.axes?.x1 ?? 0,
-                    value1: rawObject.axes?.x2 ?? LOGICAL_WIDTH - 10,
-                };
-                rawObject.calibration.y = {
-                    scaleType: AxisScale.LINEAR,
-                    p0: null,
-                    p1: rawObject.calibration.yRef.y ?? 10,
-                    value0: rawObject.axes?.y1 ?? 0,
-                    value1: rawObject.axes?.y2 ?? LOGICAL_HEIGHT - 10,
-                };
-            }
-
-            delete rawObject.calibration.xRef;
-            delete rawObject.calibration.yRef;
-            delete rawObject.axes;
-        }
-
-        if (rawObject?.ui && rawObject.ui === 'object' && 'translateX' in rawObject.ui) {
-            if (
-                rawObject?.ui &&
-                rawObject.ui === 'object' &&
-                !('translateXscaled' in rawObject.ui)
-            ) {
-                rawObject.ui.translateXscaled = rawObject.ui.translateX;
-                rawObject.ui.translateYscaled = rawObject.ui.translateY;
-            }
-            delete rawObject.ui.translateX;
-            delete rawObject.ui.translateY;
-        }
-
-        return rawObject;
+        return validation.value;
     } catch (err) {
-        console.warn(err);
+        console.warn(`Failed to load project ${id}:`, err);
         throw new Error("Couldn't load project");
     }
 }
 
-export async function loadAllProjects() {
+/**
+ * Load projects for user-facing lists. Invalid individual records are logged and
+ * skipped so one damaged project cannot hide every healthy project.
+ * Storage snapshot inconsistencies still throw because they make the read unreliable.
+ */
+export async function loadAllProjects(): Promise<StoredProject[]> {
+    return loadProjects({ skipInvalidRecords: true });
+}
+
+/**
+ * Load a complete, validated project snapshot for destructive maintenance.
+ * Any invalid record causes this to throw so image cleanup cannot mistake an
+ * image referenced by a corrupt project for an orphan.
+ */
+export async function loadAllProjectsForCleanup(): Promise<StoredProject[]> {
+    return loadProjects({ skipInvalidRecords: false });
+}
+
+async function loadProjects(options: { skipInvalidRecords: boolean }): Promise<StoredProject[]> {
     const keys = await AsyncStorage.getAllKeys();
-
     const projectKeys = keys.filter((k) => k.startsWith(PROJECT_PREFIX));
-
     const projects = await AsyncStorage.multiGet(projectKeys);
+
+    // A partial or inconsistent multiGet result is not a reliable snapshot.
+    const returnedKeys = new Set(projects.map(([key]) => key));
+    if (
+        projects.length !== projectKeys.length ||
+        returnedKeys.size !== projects.length ||
+        projectKeys.some((key) => !returnedKeys.has(key))
+    ) {
+        throw new Error(
+            'Cannot safely load projects: multiGet returned an incomplete or inconsistent result',
+        );
+    }
 
     const result: StoredProject[] = [];
 
-    for (const [, json] of projects) {
-        if (json !== null) {
-            const parsedData = JSON.parse(json) as StoredProject;
-            result.push(parsedData);
+    for (const [key, json] of projects) {
+        // A null value despite the key being present indicates an inconsistent snapshot.
+        if (json === null) {
+            throw new Error(`Cannot safely load project record ${key}: missing value`);
         }
+
+        let parsed: unknown;
+        try {
+            parsed = JSON.parse(json);
+        } catch (error) {
+            const message = `Cannot load project record ${key}: invalid JSON (${String(error)})`;
+            if (options.skipInvalidRecords) {
+                console.warn(message);
+                continue;
+            }
+            throw new Error(message);
+        }
+
+        const validation = validateStoredProject(parsed);
+        if (!validation.valid) {
+            const message = `Cannot load project record ${key}: ${validation.errors.join('; ')}`;
+            if (options.skipInvalidRecords) {
+                console.warn(message);
+                continue;
+            }
+            throw new Error(message);
+        }
+
+        result.push(validation.value);
     }
 
     return result;
 }
 
 export async function updateProject(id: string, project: Project): Promise<SaveProjectResponse> {
+    const validation = validateProject(project);
+    if (!validation.valid) {
+        throw new Error(`Cannot save invalid V1 project: ${validation.errors.join('; ')}`);
+    }
+
     const now = new Date().toISOString();
 
-    const existing = (await AsyncStorage.getItem(PROJECT_PREFIX + id)) ?? '';
+    const existing = await AsyncStorage.getItem(PROJECT_PREFIX + id);
 
-    const createdAt = JSON.parse(existing)?.createdAt;
+    if (existing === null) {
+        throw new Error('Project not found');
+    }
+
+    let existingParsed: unknown;
+    try {
+        existingParsed = JSON.parse(existing);
+    } catch (error) {
+        throw new Error(`Cannot update invalid stored project: invalid JSON (${String(error)})`);
+    }
+
+    const existingValidation = validateStoredProject(existingParsed);
+    if (!existingValidation.valid) {
+        throw new Error(
+            `Cannot update invalid stored project: ${existingValidation.errors.join('; ')}`,
+        );
+    }
+
+    const createdAt = existingValidation.value.createdAt;
 
     const payload: StoredProject = {
         ...project,
@@ -136,7 +165,7 @@ export async function updateProject(id: string, project: Project): Promise<SaveP
 
     return {
         id,
-        createdAt: now,
+        createdAt,
         updatedAt: now,
     };
 }

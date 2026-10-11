@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { View, Text, FlatList, TouchableOpacity, Alert, StyleSheet } from 'react-native';
 import storage from '../../frontend/services/storage';
+import { deleteProjectAndCleanup } from '../services/projectDeletion';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import formatTimestamp from '../utils/timestamp';
@@ -33,11 +34,13 @@ export default function ProjectListScreen({ onSelect, onBack, currentId }: Proje
 
     async function handleDelete(id: string) {
         try {
-            await storage.deleteProject(id);
-
-            setProjects((prev) => prev.filter((p) => p.id !== id));
+            await deleteProjectAndCleanup(id, {
+                deleteProject: storage.deleteProject,
+                loadAllProjects: storage.loadAllProjectsForCleanup,
+                onDeleted: () => setProjects((prev) => prev.filter((p) => p.id !== id)),
+            });
         } catch (err) {
-            console.error(err);
+            console.error('Failed to delete project:', err);
         }
     }
 

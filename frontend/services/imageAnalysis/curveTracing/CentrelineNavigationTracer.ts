@@ -6,7 +6,6 @@ import type { TraceOptions, TracePoint, TraceResult, TraceVector } from './types
 
 const MAX_DIRECTION_CHANGE_DEGREES = 30;
 const PROGRESS_HISTORY_LENGTH = 6;
-const MIN_FORWARD_PROGRESS = 0.25;
 const ENDPOINT_MIN_POINTS = 12;
 const ENDPOINT_LOOKAHEAD_START = 4;
 const ENDPOINT_LOOKAHEAD_END = 6;

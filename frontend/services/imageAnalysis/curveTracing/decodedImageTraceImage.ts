@@ -1,9 +1,7 @@
 import type { DecodedImage } from '../types';
 import type { TraceImage, TracePixel } from './image';
 
-export function createTraceImage(
-    image: DecodedImage,
-): TraceImage {
+export function createTraceImage(image: DecodedImage): TraceImage {
     return {
         width: image.width,
         height: image.height,
@@ -11,12 +9,7 @@ export function createTraceImage(
             const pixelX = Math.round(x);
             const pixelY = Math.round(y);
 
-            if (
-                pixelX < 0 ||
-                pixelX >= image.width ||
-                pixelY < 0 ||
-                pixelY >= image.height
-            ) {
+            if (pixelX < 0 || pixelX >= image.width || pixelY < 0 || pixelY >= image.height) {
                 return {
                     r: 255,
                     g: 255,
@@ -25,8 +18,7 @@ export function createTraceImage(
                 };
             }
 
-            const offset =
-                (pixelY * image.width + pixelX) * 4;
+            const offset = (pixelY * image.width + pixelX) * 4;
 
             return {
                 r: image.pixels[offset],

@@ -65,13 +65,6 @@ describe('centreline navigation on a thick diagonal line', () => {
         const evaluation = evaluateTrace(result.points, groundTruth);
         const endpoint = result.points[result.points.length - 1];
 
-        console.log('OFF-CENTRE TRACE DIAGNOSTIC', {
-            termination: result.termination,
-            points: result.points,
-            navigationPoints: result.navigationPoints,
-            confidence: result.confidence,
-        });
-
         expect(result.points.length).toBeGreaterThan(50);
         expect(evaluation.meanError).toBeLessThanOrEqual(1.5);
         expect(evaluation.maxInDomainError).toBeLessThanOrEqual(2.5);

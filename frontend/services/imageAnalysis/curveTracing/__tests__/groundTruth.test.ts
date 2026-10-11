@@ -1,4 +1,3 @@
-import type { GroundTruthCurve } from '../groundTruth';
 import { createLineGroundTruth } from '../groundTruth';
 
 describe('ground truth curves', () => {

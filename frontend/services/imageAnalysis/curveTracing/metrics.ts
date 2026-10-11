@@ -19,36 +19,14 @@ export function distance(a: TracePoint, b: TracePoint): number {
     return Math.sqrt(dx * dx + dy * dy);
 }
 
-export interface TraceEvaluation {
-    meanError: number;
-    maxError: number;
-    coverage: number;
-    pointCount: number;
-}
-
-function nearestGroundTruthDistance(point: TracePoint, groundTruth: GroundTruthCurve): number {
-    const samples = 1000;
-
-    let bestDistance = Number.POSITIVE_INFINITY;
-
-    for (let i = 0; i <= samples; i += 1) {
-        const t = i / samples;
-        const candidate = groundTruth.evaluate(t);
-
-        bestDistance = Math.min(bestDistance, distance(point, candidate));
-    }
-
-    return bestDistance;
-}
-
 function buildGroundTruthSamples(
     groundTruth: GroundTruthCurve,
     sampleCount: number,
-): Array<{
+): {
     t: number;
     point: TracePoint;
     distance: number;
-}> {
+}[] {
     const samples = [];
 
     let accumulatedDistance = 0;
@@ -171,8 +149,6 @@ export function evaluateTrace(
     const inDomainErrors = errors.filter((entry) => entry.isInDomain).map((entry) => entry.error);
 
     const maxInDomainError = inDomainErrors.length === 0 ? 0 : Math.max(...inDomainErrors);
-
-    const tracedDistance = distance(points[0], points[points.length - 1]);
 
     const finalPoint = points[points.length - 1];
 

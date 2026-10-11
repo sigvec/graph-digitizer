@@ -7,6 +7,7 @@ import { importProject } from '../../frontend/services/sharing/importProject';
 import type { ShareResponse } from '../../frontend/services/sharing/ShareResponse';
 import type { Project, StoredProject } from '../../frontend/services/sharing/Project';
 import type { SaveProjectResponse } from '../../frontend/services/storage/SaveProjectResponse';
+import { removeLocalImage } from '../../frontend/services/storage/imageStorage';
 
 interface ProjectSharingProps {
     projectData: ProjectExportData;
@@ -146,11 +147,15 @@ export function useProjectSharing({
             controller.abort();
         }, 30000);
 
+        let importedProject: Project | undefined;
+        let saveCompleted = false;
+
         try {
-            const importedProject = await importProject(shareId, controller.signal);
+            importedProject = await importProject(shareId, controller.signal);
 
             const result = await handleSaveAs(importedProject.name, importedProject);
             if (result) {
+                saveCompleted = true;
                 const storedProject = {
                     ...importedProject,
                     id: result.id,
@@ -168,6 +173,17 @@ export function useProjectSharing({
                 throw new Error("Couldn't save the imported project");
             }
         } catch (err) {
+            if (!saveCompleted && importedProject?.image) {
+                try {
+                    await removeLocalImage(importedProject.image);
+                } catch (cleanupError) {
+                    console.warn(
+                        'Failed to remove image from unsuccessful project import',
+                        cleanupError,
+                    );
+                }
+            }
+
             let message =
                 'Unable to connect to the sharing service. Please check your internet connection and try again.';
 

@@ -68,6 +68,12 @@ export async function copyToLocal(asset: ImagePickerAsset): Promise<StoredImage>
     try {
         source.copy(destination);
     } catch (error) {
+        // A failed copy may have left a partial destination behind.
+        try {
+            destination.delete();
+        } catch {
+            // Preserve the original copy error if cleanup also fails.
+        }
         throw new Error(`Failed to copy image: ${String(error)}`);
     }
 
@@ -83,21 +89,23 @@ export async function saveImageDataToLocal(imageData: SharedProjectImage): Promi
         intermediates: true,
     });
 
-    const extension = extensionFromFilename(imageData.mimeType) ?? 'jpg';
+    const extension = extensionFromMimeType(imageData.mimeType);
 
     const filename = generateFilename(extension);
 
     const destination = new File(imageDirectory, filename);
-
-    destination.write(imageData.data, {
-        encoding: 'base64',
-    });
 
     try {
         destination.write(imageData.data, {
             encoding: 'base64',
         });
     } catch (error) {
+        // A failed write may have left a partial destination behind.
+        try {
+            destination.delete();
+        } catch {
+            // Preserve the original write error if cleanup also fails.
+        }
         throw new Error(`Failed to copy image: ${String(error)}`);
     }
 
@@ -105,6 +113,13 @@ export async function saveImageDataToLocal(imageData: SharedProjectImage): Promi
         uri: destination.uri,
         mimeType: imageData.mimeType ?? 'image/jpeg',
     };
+}
+
+export async function removeLocalImage(uri: string): Promise<void> {
+    const image = imageDirectory.list().find((candidate) => candidate.uri === uri);
+    if (image) {
+        image.delete();
+    }
 }
 
 export async function removeOrphanedImages(projects: ProjectWithImage[]): Promise<void> {

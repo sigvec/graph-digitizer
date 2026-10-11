@@ -13,11 +13,6 @@ export async function deserializeProject(project: SharedProject): Promise<Projec
     return {
         ...project,
         datasetCount: project.datasets.length,
-        image:
-            project.image == null
-                ? null
-                : typeof project.image == 'string'
-                  ? project.image
-                  : await deserializeImage(project.image),
+        image: project.image == null ? null : await deserializeImage(project.image),
     };
 }

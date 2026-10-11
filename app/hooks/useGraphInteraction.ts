@@ -16,6 +16,7 @@ const InsertMode = {
     NearestPoint: 'nearestPoint',
 } as const;
 
+// eslint-disable-next-line @typescript-eslint/no-redeclare -- intentional const/type pair
 export type InsertMode = (typeof InsertMode)[keyof typeof InsertMode];
 const INSERT_MODE: InsertMode = InsertMode.NearestSegment;
 

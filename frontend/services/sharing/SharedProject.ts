@@ -18,7 +18,7 @@ export interface SharedProject {
         zoomDisplay: number;
         translateXscaled: number;
         translateYscaled: number;
-        activeDatasetId: string;
+        activeDatasetId: string | null;
         showRegressionLine: boolean;
     };
 }

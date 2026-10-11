@@ -5,10 +5,7 @@ describe('createTraceImage', () => {
         const image = createTraceImage({
             width: 2,
             height: 1,
-            pixels: new Uint8Array([
-                10, 20, 30, 255,
-                200, 210, 220, 128,
-            ]),
+            pixels: new Uint8Array([10, 20, 30, 255, 200, 210, 220, 128]),
         });
 
         expect(image.width).toBe(2);

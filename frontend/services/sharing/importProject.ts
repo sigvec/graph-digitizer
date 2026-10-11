@@ -1,6 +1,7 @@
 import type { Project } from './Project';
 import { deserializeProject } from './deserializeProject';
 import { API_BASE_URL } from './apiConfig';
+import { validateSharedProject } from './validateSharedProject';
 
 export async function importProject(shareId: string, signal?: AbortSignal): Promise<Project> {
     try {
@@ -21,9 +22,13 @@ export async function importProject(shareId: string, signal?: AbortSignal): Prom
             }
         }
 
-        const result = await response.json();
+        const result: unknown = await response.json();
+        const validation = validateSharedProject(result);
+        if (!validation.valid) {
+            throw new Error('INVALID_PROJECT');
+        }
 
-        const project = await deserializeProject(result);
+        const project = await deserializeProject(validation.value);
 
         return project;
     } catch (err) {
