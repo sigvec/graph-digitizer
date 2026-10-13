@@ -4,12 +4,18 @@ import type { ShareResponse } from './ShareResponse';
 import { serializeProject } from './serializeProject';
 
 import { API_BASE_URL } from './apiConfig';
+import { validateProject } from './validateProject';
 
 const MAX_SHARED_PROJECT_SIZE = 20 * 1024 * 1024;
 
 export async function shareProject(project: Project, signal?: AbortSignal): Promise<ShareResponse> {
     try {
-        const sharedProject = await serializeProject(project);
+        const validation = validateProject(project);
+        if (!validation.valid) {
+            throw new Error('INVALID_PROJECT');
+        }
+
+        const sharedProject = await serializeProject(validation.value);
         const json = JSON.stringify(sharedProject);
         const bytes = new TextEncoder().encode(json).length;
 

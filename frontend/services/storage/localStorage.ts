@@ -50,6 +50,11 @@ export async function loadProject(id: string): Promise<StoredProject> {
         if (!validation.valid) {
             throw new Error(`Invalid current-format project: ${validation.errors.join('; ')}`);
         }
+        if (validation.value.id !== id) {
+            throw new Error(
+                `Stored project id ${validation.value.id} does not match requested id ${id}`,
+            );
+        }
         return validation.value;
     } catch (err) {
         console.warn(`Failed to load project ${id}:`, err);
@@ -134,6 +139,16 @@ async function loadProjects(options: { skipInvalidRecords: boolean }): Promise<S
             throw new Error(message);
         }
 
+        const expectedId = key.slice(PROJECT_PREFIX.length);
+        if (validation.value.id !== expectedId) {
+            const message = `Cannot load project record ${key}: stored id ${validation.value.id} does not match storage key id ${expectedId}`;
+            if (options.skipInvalidRecords) {
+                console.warn(message);
+                continue;
+            }
+            throw new Error(message);
+        }
+
         result.push(validation.value);
     }
 
@@ -174,6 +189,12 @@ export async function updateProject(id: string, project: Project): Promise<SaveP
     if (!existingValidation.valid) {
         throw new Error(
             `Cannot update invalid stored project: ${existingValidation.errors.join('; ')}`,
+        );
+    }
+
+    if (existingValidation.value.id !== id) {
+        throw new Error(
+            `Cannot update invalid stored project: stored id ${existingValidation.value.id} does not match storage key id ${id}`,
         );
     }
 

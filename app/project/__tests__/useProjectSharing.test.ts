@@ -25,7 +25,7 @@ jest.mock('../../../frontend/services/sharing/shareProject', () => ({
 const sharedProjectPayload: SharedProject = {
     formatVersion: 1,
     name: 'Imported project',
-    appVersion: '0.5.2',
+    appVersion: '0.5.3',
     device: { platform: 'test', version: '1' },
     image: {
         mimeType: 'image/png',

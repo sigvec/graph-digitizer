@@ -3,7 +3,7 @@ import { validateSharedProject } from '../validateSharedProject';
 const validSharedProject = () => ({
     formatVersion: 1,
     name: 'Shared test project',
-    appVersion: '0.5.2',
+    appVersion: '0.5.3',
     device: { platform: 'test', version: '1' },
     image: { mimeType: 'image/png', data: 'aGVsbG8=' },
     calibration: {

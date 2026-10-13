@@ -1,11 +1,18 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { loadAllProjects, loadAllProjectsForCleanup } from '../localStorage';
+import {
+    loadAllProjects,
+    loadAllProjectsForCleanup,
+    loadProject,
+    updateProject,
+} from '../localStorage';
 
 jest.mock('@react-native-async-storage/async-storage', () => ({
     __esModule: true,
     default: {
         getAllKeys: jest.fn(),
         multiGet: jest.fn(),
+        getItem: jest.fn(),
+        setItem: jest.fn(),
     },
 }));
 
@@ -14,13 +21,13 @@ const mockStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 const validProject = (id: string) => ({
     formatVersion: 1,
     name: `Project ${id}`,
-    appVersion: '0.5.2',
+    appVersion: '0.5.3',
     device: { platform: 'test', version: '1' },
     image: null,
     calibration: {
         origin: { x: 0, y: 0 },
-        x: { scaleType: 'linear', p0: null, p1: 1, value0: 0, value1: 1, units: '' },
-        y: { scaleType: 'linear', p0: null, p1: 1, value0: 0, value1: 1, units: '' },
+        x: { scaleType: 'linear' as const, p0: null, p1: 1, value0: 0, value1: 1, units: '' },
+        y: { scaleType: 'linear' as const, p0: null, p1: 1, value0: 0, value1: 1, units: '' },
     },
     calibratedState: false,
     datasets: [],
@@ -87,6 +94,55 @@ describe('loadAllProjects storage consistency', () => {
         await expect(loadAllProjectsForCleanup()).rejects.toThrow(
             'Cannot migrate project record project:future',
         );
+    });
+
+    it('skips a project whose stored id does not match its storage key', async () => {
+        const mismatched = validProject('different-id');
+        const healthy = validProject('healthy');
+        mockStorage.getAllKeys.mockResolvedValue(['project:expected-id', 'project:healthy']);
+        mockStorage.multiGet.mockResolvedValue([
+            ['project:expected-id', JSON.stringify(mismatched)],
+            ['project:healthy', JSON.stringify(healthy)],
+        ] as never);
+
+        await expect(loadAllProjects()).resolves.toEqual([healthy]);
+        expect(console.warn).toHaveBeenCalledWith(
+            expect.stringContaining(
+                'stored id different-id does not match storage key id expected-id',
+            ),
+        );
+    });
+
+    it('keeps cleanup strict when a stored id does not match its storage key', async () => {
+        mockStorage.getAllKeys.mockResolvedValue(['project:expected-id']);
+        mockStorage.multiGet.mockResolvedValue([
+            ['project:expected-id', JSON.stringify(validProject('different-id'))],
+        ] as never);
+
+        await expect(loadAllProjectsForCleanup()).rejects.toThrow(
+            'stored id different-id does not match storage key id expected-id',
+        );
+    });
+
+    it('rejects loading a project when its stored id differs from the requested id', async () => {
+        mockStorage.getItem.mockResolvedValue(JSON.stringify(validProject('different-id')));
+
+        await expect(loadProject('requested-id')).rejects.toThrow("Couldn't load project");
+        expect(console.warn).toHaveBeenCalledWith(
+            'Failed to load project requested-id:',
+            expect.objectContaining({
+                message: 'Stored project id different-id does not match requested id requested-id',
+            }),
+        );
+    });
+
+    it('does not overwrite a stored project whose id differs from the storage key', async () => {
+        mockStorage.getItem.mockResolvedValue(JSON.stringify(validProject('different-id')));
+
+        await expect(updateProject('requested-id', validProject('incoming'))).rejects.toThrow(
+            'stored id different-id does not match storage key id requested-id',
+        );
+        expect(mockStorage.setItem).not.toHaveBeenCalled();
     });
 
     it('rejects a project key whose value is missing from multiGet', async () => {
