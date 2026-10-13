@@ -226,6 +226,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                         start={traceStart}
                                         imageWidth={imageWidth}
                                         imageHeight={imageHeight}
+                                        scale={scale}
                                     />
                                 )}
 
