@@ -1,6 +1,7 @@
 import { AxisScale } from '../../../app/calibration/constants';
 import { CurveMode } from '../../../app/datasets/constants';
 import type { Project, StoredProject } from './Project';
+import { CURRENT_PROJECT_FORMAT_VERSION } from './projectMigrations';
 
 export type ProjectValidationResult<T> =
     { valid: true; value: T } | { valid: false; errors: string[] };
@@ -28,12 +29,13 @@ function validatePoint(value: unknown, path: string, errors: string[]): void {
     if (!isFiniteNumber(value.y)) errors.push(`${path}.y must be a finite number`);
 }
 
-/** Validate the current V1 portable project schema. This deliberately does not migrate legacy data. */
+/** Validate the current portable project schema. This deliberately does not migrate legacy data. */
 export function validateProject(value: unknown): ProjectValidationResult<Project> {
     const errors: string[] = [];
     if (!isRecord(value)) return { valid: false, errors: ['Project must be an object'] };
 
-    if (value.formatVersion !== 1) errors.push('formatVersion must be 1');
+    if (value.formatVersion !== CURRENT_PROJECT_FORMAT_VERSION)
+        errors.push(`formatVersion must be ${CURRENT_PROJECT_FORMAT_VERSION}`);
     if (!isString(value.name)) errors.push('name must be a string');
     if (!isString(value.appVersion)) errors.push('appVersion must be a string');
     if (!isRecord(value.device)) {

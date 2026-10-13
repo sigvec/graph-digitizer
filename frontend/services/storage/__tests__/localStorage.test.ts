@@ -72,7 +72,20 @@ describe('loadAllProjects storage consistency', () => {
 
         await expect(loadAllProjects()).resolves.toEqual([valid]);
         expect(console.warn).toHaveBeenCalledWith(
-            expect.stringContaining('Cannot load project record project:broken:'),
+            expect.stringContaining('Cannot migrate project record project:broken:'),
+        );
+    });
+
+    it('skips unsupported future-version projects in lists but keeps cleanup strict', async () => {
+        const future = { ...validProject('future'), formatVersion: 2 };
+        mockStorage.getAllKeys.mockResolvedValue(['project:future']);
+        mockStorage.multiGet.mockResolvedValue([
+            ['project:future', JSON.stringify(future)],
+        ] as never);
+
+        await expect(loadAllProjects()).resolves.toEqual([]);
+        await expect(loadAllProjectsForCleanup()).rejects.toThrow(
+            'Cannot migrate project record project:future',
         );
     });
 

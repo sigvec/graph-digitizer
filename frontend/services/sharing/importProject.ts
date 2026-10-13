@@ -2,6 +2,7 @@ import type { Project } from './Project';
 import { deserializeProject } from './deserializeProject';
 import { API_BASE_URL } from './apiConfig';
 import { validateSharedProject } from './validateSharedProject';
+import { migrateProjectFormat } from './projectMigrations';
 
 export async function importProject(shareId: string, signal?: AbortSignal): Promise<Project> {
     try {
@@ -23,7 +24,13 @@ export async function importProject(shareId: string, signal?: AbortSignal): Prom
         }
 
         const result: unknown = await response.json();
-        const validation = validateSharedProject(result);
+        let migrated: Record<string, unknown>;
+        try {
+            migrated = migrateProjectFormat(result);
+        } catch {
+            throw new Error('INVALID_PROJECT');
+        }
+        const validation = validateSharedProject(migrated);
         if (!validation.valid) {
             throw new Error('INVALID_PROJECT');
         }

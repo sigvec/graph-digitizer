@@ -47,12 +47,20 @@ Live curve updates with auto snap-to-point.
 
 ## Screenshots
 
-### Curve Trace
+### Calibration
 
-Tap a curve to trace it automatically.
+Define graph axes and reference points for coordinate conversion.
 
 <p align="center">
-  <img src="screenshots/trace.gif" width="350">
+  <img src="screenshots/calibration.png" width="350">
+</p>
+
+### Analysis
+
+Best-fit curve with equation and statistics.
+
+<p align="center">
+  <img src="screenshots/analysis.png" width="350">
 </p>
 
 ### Spline Interpolation
@@ -63,12 +71,12 @@ Visualize interpolated curves and manage multiple datasets.
   <img src="screenshots/demo.gif" width="350">
 </p>
 
-### Calibration
+### Curve Trace
 
-Define graph axes and reference points for coordinate conversion.
+Tap a curve to trace it automatically.
 
 <p align="center">
-  <img src="screenshots/calibration.png" width="350">
+  <img src="screenshots/trace.gif" width="350">
 </p>
 
 ## Status

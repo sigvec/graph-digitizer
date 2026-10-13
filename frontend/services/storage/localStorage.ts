@@ -3,6 +3,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { generateId } from '../../../app/utils/id';
 import type { Project, StoredProject } from '../sharing/Project';
 import { validateProject, validateStoredProject } from '../sharing/validateProject';
+import { migrateProjectFormat } from '../sharing/projectMigrations';
 import type { SaveProjectResponse } from './SaveProjectResponse';
 
 const PROJECT_PREFIX = 'project:';
@@ -10,7 +11,9 @@ const PROJECT_PREFIX = 'project:';
 export async function saveProject(project: Project): Promise<SaveProjectResponse> {
     const validation = validateProject(project);
     if (!validation.valid) {
-        throw new Error(`Cannot save invalid V1 project: ${validation.errors.join('; ')}`);
+        throw new Error(
+            `Cannot save invalid current-format project: ${validation.errors.join('; ')}`,
+        );
     }
 
     const now = new Date().toISOString();
@@ -42,9 +45,10 @@ export async function loadProject(id: string): Promise<StoredProject> {
 
     try {
         const parsed: unknown = JSON.parse(json);
-        const validation = validateStoredProject(parsed);
+        const migrated = migrateProjectFormat(parsed);
+        const validation = validateStoredProject(migrated);
         if (!validation.valid) {
-            throw new Error(`Invalid V1 project: ${validation.errors.join('; ')}`);
+            throw new Error(`Invalid current-format project: ${validation.errors.join('; ')}`);
         }
         return validation.value;
     } catch (err) {
@@ -108,7 +112,19 @@ async function loadProjects(options: { skipInvalidRecords: boolean }): Promise<S
             throw new Error(message);
         }
 
-        const validation = validateStoredProject(parsed);
+        let migrated: Record<string, unknown>;
+        try {
+            migrated = migrateProjectFormat(parsed);
+        } catch (error) {
+            const message = `Cannot migrate project record ${key}: ${String(error)}`;
+            if (options.skipInvalidRecords) {
+                console.warn(message);
+                continue;
+            }
+            throw new Error(message);
+        }
+
+        const validation = validateStoredProject(migrated);
         if (!validation.valid) {
             const message = `Cannot load project record ${key}: ${validation.errors.join('; ')}`;
             if (options.skipInvalidRecords) {
@@ -127,7 +143,9 @@ async function loadProjects(options: { skipInvalidRecords: boolean }): Promise<S
 export async function updateProject(id: string, project: Project): Promise<SaveProjectResponse> {
     const validation = validateProject(project);
     if (!validation.valid) {
-        throw new Error(`Cannot save invalid V1 project: ${validation.errors.join('; ')}`);
+        throw new Error(
+            `Cannot save invalid current-format project: ${validation.errors.join('; ')}`,
+        );
     }
 
     const now = new Date().toISOString();
@@ -145,7 +163,14 @@ export async function updateProject(id: string, project: Project): Promise<SaveP
         throw new Error(`Cannot update invalid stored project: invalid JSON (${String(error)})`);
     }
 
-    const existingValidation = validateStoredProject(existingParsed);
+    let migratedExisting: Record<string, unknown>;
+    try {
+        migratedExisting = migrateProjectFormat(existingParsed);
+    } catch (error) {
+        throw new Error(`Cannot update invalid stored project: ${String(error)}`);
+    }
+
+    const existingValidation = validateStoredProject(migratedExisting);
     if (!existingValidation.valid) {
         throw new Error(
             `Cannot update invalid stored project: ${existingValidation.errors.join('; ')}`,

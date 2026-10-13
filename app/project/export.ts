@@ -3,14 +3,14 @@ import { Platform } from 'react-native';
 import type { Project } from '../../frontend/services/sharing/Project';
 import { transformPoint } from '../calibration/transform';
 import { ProjectExportData } from './types';
+import { CURRENT_PROJECT_FORMAT_VERSION } from '../../frontend/services/sharing/projectMigrations';
 
 import Constants from 'expo-constants';
 const APP_VERSION = Constants.expoConfig?.version ?? '0.5.2';
-const PROJECT_FORMAT_VERSION = 1;
 
 export function buildProjectExport(projectData: ProjectExportData): Project {
     return {
-        formatVersion: PROJECT_FORMAT_VERSION,
+        formatVersion: CURRENT_PROJECT_FORMAT_VERSION,
         name: projectData.projectName.trim() || 'Untitled Project',
         appVersion: APP_VERSION,
         device: {
