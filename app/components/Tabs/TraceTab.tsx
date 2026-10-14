@@ -1,5 +1,5 @@
 import React from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
 import IconButton from '../IconButton';
@@ -31,8 +31,11 @@ export default function TraceTab({
     hasTraceStart,
 }: Props) {
     return (
-        <View style={styles.container}>
-            <Text style={styles.heading}>Curve tracing</Text>
+        <ScrollView
+            style={styles.scrollView}
+            contentContainerStyle={styles.container}
+            showsVerticalScrollIndicator
+        >
             <Text style={styles.description}>
                 Trace a continuous curve from the image into the active dataset. The app traces in
                 both directions from the selected point.
@@ -138,23 +141,22 @@ export default function TraceTab({
             {!activeDataset.visible && (
                 <Text style={styles.status}>The active dataset is hidden.</Text>
             )}
-        </View>
+        </ScrollView>
     );
 }
 
 const styles = StyleSheet.create({
-    container: {
+    scrollView: {
         flex: 1,
-        paddingHorizontal: SPACING.sm,
-        paddingVertical: SPACING.sm,
+        minHeight: 0,
         backgroundColor: COLOURS.surface,
         borderRadius: 10,
-        gap: 8,
     },
-    heading: {
-        ...TYPOGRAPHY.body,
-        color: COLOURS.text,
-        fontWeight: '600',
+    container: {
+        flexGrow: 1,
+        paddingHorizontal: SPACING.sm,
+        paddingVertical: SPACING.sm,
+        gap: 8,
     },
     description: {
         ...TYPOGRAPHY.small,

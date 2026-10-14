@@ -113,7 +113,7 @@ export default function ProjectListScreen({ onSelect, onBack, currentId }: Proje
                                     />
                                 )}
 
-                                {item.id === currentId && <Text>(Currently project)</Text>}
+                                {item.id === currentId && <Text>(Current project)</Text>}
                             </View>
                         );
                     }}

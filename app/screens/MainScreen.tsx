@@ -106,6 +106,9 @@ export default function MainScreen({
     // Workspace
     // --------------------------------------------------
     const [workspaceTab, setWorkspaceTab] = useState('edit');
+    const [tabContentWidth, setTabContentWidth] = useState(0);
+    const [tabViewportWidth, setTabViewportWidth] = useState(0);
+    const [tabScrollOffset, setTabScrollOffset] = useState(0);
     const [showRegressionLine, setShowRegressionLine] = useState(false);
     //
     // Image
@@ -163,6 +166,14 @@ export default function MainScreen({
         setTracePhase('idle');
         setTraceStart(null);
         setTracePreview([]);
+    };
+
+    // Leaving the Trace tab cancels any unaccepted trace preview.
+    const changeWorkspaceTab = (tab: string) => {
+        if (workspaceTab === 'trace' && tab !== 'trace') {
+            resetTrace();
+        }
+        setWorkspaceTab(tab);
     };
 
     // An in-progress trace is transient UI state, not part of project history.
@@ -856,11 +867,11 @@ export default function MainScreen({
                                     <>
                                         <Text style={styles.statusText}>Calibrate mode</Text>
                                         <Text style={styles.statusText}>
-                                            {calibrationSelection === 'origin' && '[Set origin]'}
-                                            {calibrationSelection === 'x0' && '[Set X0]'}
-                                            {calibrationSelection === 'x1' && '[Set X1]'}
-                                            {calibrationSelection === 'y0' && '[Set Y0]'}
-                                            {calibrationSelection === 'y1' && '[Set Y1]'}
+                                            {calibrationSelection === 'origin' && '[Nudge origin]'}
+                                            {calibrationSelection === 'x0' && '[Nudge X0]'}
+                                            {calibrationSelection === 'x1' && '[Nudge X1]'}
+                                            {calibrationSelection === 'y0' && '[Nudge Y0]'}
+                                            {calibrationSelection === 'y1' && '[Nudge Y1]'}
                                         </Text>
                                     </>
                                 )}
@@ -869,27 +880,31 @@ export default function MainScreen({
                             {mode === 'points' && (
                                 <View style={styles.statusBarSection}>
                                     {selectedPointData ? (
-                                        <Text style={styles.statusTextCoords}>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
                                             X: {graphPoint ? graphPoint.x.toFixed(1) : 'None'}
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>X:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            X:
+                                        </Text>
                                     )}
 
                                     {selectedPointData ? (
-                                        <Text style={styles.statusTextCoords}>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
                                             Y: {graphPoint ? graphPoint.y.toFixed(1) : 'None'}
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>Y:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            Y:
+                                        </Text>
                                     )}
                                 </View>
                             )}
 
-                            {calibrationSelection === 'origin' && (
+                            {mode === 'calibration' && calibrationSelection === 'origin' && (
                                 <View style={styles.statusBarSection}>
                                     {calibration.origin ? (
-                                        <Text style={styles.statusTextCoords}>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
                                             X:{' '}
                                             {calibration.origin.x
                                                 ? calibration.origin.x.toFixed(1)
@@ -897,11 +912,13 @@ export default function MainScreen({
                                             %
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>X:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            X:
+                                        </Text>
                                     )}
 
                                     {calibration.origin ? (
-                                        <Text style={styles.statusTextCoords}>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
                                             Y:{' '}
                                             {calibration.origin.y
                                                 ? (100 - calibration.origin.y).toFixed(1)
@@ -909,15 +926,17 @@ export default function MainScreen({
                                             %
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>Y:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            Y:
+                                        </Text>
                                     )}
                                 </View>
                             )}
 
-                            {calibrationSelection[0] === 'x' && (
+                            {mode === 'calibration' && calibrationSelection[0] === 'x' && (
                                 <View style={styles.statusBarSection}>
                                     {calibration.x.p0 ? (
-                                        <Text style={styles.statusTextCoords}>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
                                             X0:{' '}
                                             {calibration.x.p0
                                                 ? calibration.x.p0.toFixed(1)
@@ -925,47 +944,55 @@ export default function MainScreen({
                                             %
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>X0:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            X0:
+                                        </Text>
                                     )}
 
                                     {calibration.x.p1 ? (
-                                        <Text style={styles.statusTextCoords}>
-                                            X1: (
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            X1:{' '}
                                             {calibration.x.p1
-                                                ? (100 - calibration.x.p1).toFixed(1)
-                                                : 'None'}
-                                            %)
-                                        </Text>
-                                    ) : (
-                                        <Text style={styles.statusTextCoords}>X1:</Text>
-                                    )}
-                                </View>
-                            )}
-
-                            {calibrationSelection[1] === 'y' && (
-                                <View style={styles.statusBarSection}>
-                                    {calibration.y.p0 ? (
-                                        <Text style={styles.statusTextCoords}>
-                                            Y0:{' '}
-                                            {calibration.y.p0
-                                                ? calibration.y.p0.toFixed(1)
+                                                ? calibration.x.p1.toFixed(1)
                                                 : 'None'}
                                             %
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>Y0:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            X1:
+                                        </Text>
+                                    )}
+                                </View>
+                            )}
+
+                            {mode === 'calibration' && calibrationSelection[0] === 'y' && (
+                                <View style={styles.statusBarSection}>
+                                    {calibration.y.p0 ? (
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            Y0:{' '}
+                                            {calibration.y.p0
+                                                ? (100 - calibration.y.p0).toFixed(1)
+                                                : 'None'}
+                                            %
+                                        </Text>
+                                    ) : (
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            Y0:
+                                        </Text>
                                     )}
 
                                     {calibration.y.p1 ? (
-                                        <Text style={styles.statusTextCoords}>
-                                            Y1: (
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            Y1:{' '}
                                             {calibration.y.p1
                                                 ? (100 - calibration.y.p1).toFixed(1)
                                                 : 'None'}
-                                            %)
+                                            %{' '}
                                         </Text>
                                     ) : (
-                                        <Text style={styles.statusTextCoords}>Y1:</Text>
+                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                            Y1:
+                                        </Text>
                                     )}
                                 </View>
                             )}
@@ -998,7 +1025,7 @@ export default function MainScreen({
                                         }
                                     />
                                 </View>
-                                <Text style={styles.statusText}>
+                                <Text numberOfLines={1} style={styles.statusText}>
                                     Zoom:{' '}
                                     {zoomDisplay > 0.1
                                         ? (zoomDisplay * 100).toFixed(0)
@@ -1013,12 +1040,25 @@ export default function MainScreen({
                 <View style={[styles.controlsArea, !image && { borderColor: COLOURS.invisible }]}>
                     {image && (
                         <>
-                            <View style={styles.tabBar}>
-                                <ScrollView horizontal>
+                            <View
+                                style={styles.tabBar}
+                                onLayout={(event) =>
+                                    setTabViewportWidth(event.nativeEvent.layout.width)
+                                }
+                            >
+                                <ScrollView
+                                    horizontal
+                                    showsHorizontalScrollIndicator
+                                    onContentSizeChange={(width) => setTabContentWidth(width)}
+                                    onScroll={(event) =>
+                                        setTabScrollOffset(event.nativeEvent.contentOffset.x)
+                                    }
+                                    scrollEventThrottle={16}
+                                >
                                     <TabButton
                                         label="Datasets"
                                         onPress={() => {
-                                            setWorkspaceTab('datasets');
+                                            changeWorkspaceTab('datasets');
                                             setMode('points');
                                         }}
                                         active={workspaceTab === 'datasets'}
@@ -1026,7 +1066,7 @@ export default function MainScreen({
                                     <TabButton
                                         label="Point"
                                         onPress={() => {
-                                            setWorkspaceTab('edit');
+                                            changeWorkspaceTab('edit');
                                             setMode('points');
                                         }}
                                         active={workspaceTab === 'edit'}
@@ -1034,7 +1074,7 @@ export default function MainScreen({
                                     <TabButton
                                         label="Trace"
                                         onPress={() => {
-                                            setWorkspaceTab('trace');
+                                            changeWorkspaceTab('trace');
                                             setMode('points');
                                         }}
                                         active={workspaceTab === 'trace'}
@@ -1042,7 +1082,7 @@ export default function MainScreen({
                                     <TabButton
                                         label="Calibrate"
                                         onPress={() => {
-                                            setWorkspaceTab('calibrate');
+                                            changeWorkspaceTab('calibrate');
                                             setMode('calibration');
                                         }}
                                         active={workspaceTab === 'calibrate'}
@@ -1050,7 +1090,7 @@ export default function MainScreen({
                                     <TabButton
                                         label="Analysis"
                                         onPress={() => {
-                                            setWorkspaceTab('analysis');
+                                            changeWorkspaceTab('analysis');
                                             setMode('points');
                                         }}
                                         active={workspaceTab === 'analysis'}
@@ -1058,12 +1098,28 @@ export default function MainScreen({
                                     <TabButton
                                         label="Project"
                                         onPress={() => {
-                                            setWorkspaceTab('project');
+                                            changeWorkspaceTab('project');
                                             setMode('points');
                                         }}
                                         active={workspaceTab === 'project'}
                                     />
                                 </ScrollView>
+                                {tabScrollOffset > 1 && (
+                                    <View
+                                        pointerEvents="none"
+                                        style={[
+                                            styles.tabOverflowIndicator,
+                                            styles.tabOverflowIndicatorLeft,
+                                        ]}
+                                    >
+                                        <Text style={styles.tabOverflowText}>‹</Text>
+                                    </View>
+                                )}
+                                {tabContentWidth > tabViewportWidth + tabScrollOffset + 1 && (
+                                    <View pointerEvents="none" style={styles.tabOverflowIndicator}>
+                                        <Text style={styles.tabOverflowText}>›</Text>
+                                    </View>
+                                )}
                             </View>
 
                             <View style={styles.workspaceToolContainer}>
@@ -1499,6 +1555,36 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         paddingHorizontal: SPACING.md,
         borderColor: COLOURS.border,
+        position: 'relative',
+    },
+
+    tabOverflowIndicator: {
+        position: 'absolute',
+        right: 0,
+        top: 0,
+        bottom: 0,
+        width: 24,
+        alignItems: 'center',
+        justifyContent: 'center',
+        backgroundColor: COLOURS.surfaceToolsContainer,
+        borderTopLeftRadius: 8,
+        borderBottomLeftRadius: 8,
+    },
+
+    tabOverflowIndicatorLeft: {
+        left: 0,
+        right: undefined,
+        borderTopLeftRadius: 0,
+        borderBottomLeftRadius: 0,
+        borderTopRightRadius: 8,
+        borderBottomRightRadius: 8,
+    },
+
+    tabOverflowText: {
+        color: COLOURS.muted,
+        fontSize: 26,
+        lineHeight: 28,
+        fontWeight: '600',
     },
 
     workspaceToolContainer: {
@@ -1573,7 +1659,7 @@ const styles = StyleSheet.create({
     },
 
     statusText: {
-        flexShrink: 1,
+        flexShrink: 0,
         ...TYPOGRAPHY.small,
         color: COLOURS.muted,
     },
@@ -1583,6 +1669,7 @@ const styles = StyleSheet.create({
         fontFamily: 'monospace',
         color: COLOURS.muted,
         marginRight: SPACING.lg,
+        flexShrink: 0,
     },
 
     statusBarIndicator: {
