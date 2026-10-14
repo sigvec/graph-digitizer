@@ -1175,6 +1175,11 @@ export default function MainScreen({
                                         setNudgeAllPoints={setNudgeAllPoints}
                                         handleDeletePoint={handleDeletePoint}
                                         zoomDisplay={zoomDisplay}
+                                        imageAspectRatio={
+                                            imageSize && imageSize.height > 0
+                                                ? imageSize.width / imageSize.height
+                                                : 1
+                                        }
                                     />
                                 )}
 
@@ -1219,6 +1224,11 @@ export default function MainScreen({
                                         onDirtyChanged={onDirtyChanged}
                                         nudgeCalibrationPoint={nudgeCalibrationPoint}
                                         zoomDisplay={zoomDisplay}
+                                        imageAspectRatio={
+                                            imageSize && imageSize.height > 0
+                                                ? imageSize.width / imageSize.height
+                                                : 1
+                                        }
                                     />
                                 )}
                             </View>

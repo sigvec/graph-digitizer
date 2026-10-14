@@ -4,6 +4,7 @@ import { View, StyleSheet, Text, Switch } from 'react-native';
 import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
 import IconButton from '../IconButton';
 import type { Dataset } from '../../datasets/types';
+import { getAspectRatioNudge } from '../../utils/nudge';
 
 interface Props {
     activeDatasetId: string | null;
@@ -23,6 +24,7 @@ interface Props {
     handleDeletePoint: () => void;
 
     zoomDisplay: number;
+    imageAspectRatio: number;
 }
 
 export default function PointTab({
@@ -41,7 +43,10 @@ export default function PointTab({
     handleDeletePoint,
 
     zoomDisplay,
+    imageAspectRatio,
 }: Props) {
+    const nudge = getAspectRatioNudge(zoomDisplay, imageAspectRatio);
+
     return (
         <View
             style={[
@@ -144,24 +149,24 @@ export default function PointTab({
                 </Text>
                 <IconButton
                     icon="nudgeLeft"
-                    onPress={() => nudgePoint(-1 / zoomDisplay, 0)}
+                    onPress={() => nudgePoint(-nudge.x, 0)}
                     disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
                 />
                 <View>
                     <IconButton
                         icon="nudgeUp"
-                        onPress={() => nudgePoint(0, -1 / zoomDisplay)}
+                        onPress={() => nudgePoint(0, -nudge.y)}
                         disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
                     />
                     <IconButton
                         icon="nudgeDown"
-                        onPress={() => nudgePoint(0, 1 / zoomDisplay)}
+                        onPress={() => nudgePoint(0, nudge.y)}
                         disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
                     />
                 </View>
                 <IconButton
                     icon="nudgeRight"
-                    onPress={() => nudgePoint(1 / zoomDisplay, 0)}
+                    onPress={() => nudgePoint(nudge.x, 0)}
                     disabled={(!selectedPointRef && !nudgeAllPoints) || activeDataset.locked}
                 />
                 <View

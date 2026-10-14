@@ -6,6 +6,7 @@ import AppIcon from '../AppIcon';
 import IconButton from '../IconButton';
 import { AxisScale } from '../../calibration/constants';
 import { TextInputModal } from '../Modals';
+import { getAspectRatioNudge } from '../../utils/nudge';
 import {
     Calibration,
     CalibrationAxis,
@@ -28,6 +29,7 @@ interface Props {
     onDirtyChanged: (newValue: boolean) => void;
     nudgeCalibrationPoint: (selection: CalibrationSelection, dx: number, dy: number) => void;
     zoomDisplay: number;
+    imageAspectRatio: number;
 }
 
 export default function CalibrationTab({
@@ -41,7 +43,10 @@ export default function CalibrationTab({
     onDirtyChanged,
     nudgeCalibrationPoint,
     zoomDisplay,
+    imageAspectRatio,
 }: Props) {
+    const nudge = getAspectRatioNudge(zoomDisplay, imageAspectRatio);
+
     const [x0Text, setX0Text] = useState(String(calibration.x.value0));
     const [x1Text, setX1Text] = useState(String(calibration.x.value1));
     const [y0Text, setY0Text] = useState(String(calibration.y.value0));
@@ -333,7 +338,7 @@ export default function CalibrationTab({
                             <IconButton
                                 icon="nudgeLeft"
                                 onPress={() =>
-                                    nudgeCalibrationPoint(calibrationSelection, -1 / zoomDisplay, 0)
+                                    nudgeCalibrationPoint(calibrationSelection, -nudge.x, 0)
                                 }
                                 disabled={calibrationSelection[0] === 'y'}
                             />
@@ -341,22 +346,14 @@ export default function CalibrationTab({
                                 <IconButton
                                     icon="nudgeUp"
                                     onPress={() =>
-                                        nudgeCalibrationPoint(
-                                            calibrationSelection,
-                                            0,
-                                            -1 / zoomDisplay,
-                                        )
+                                        nudgeCalibrationPoint(calibrationSelection, 0, -nudge.y)
                                     }
                                     disabled={calibrationSelection[0] === 'x'}
                                 />
                                 <IconButton
                                     icon="nudgeDown"
                                     onPress={() =>
-                                        nudgeCalibrationPoint(
-                                            calibrationSelection,
-                                            0,
-                                            1 / zoomDisplay,
-                                        )
+                                        nudgeCalibrationPoint(calibrationSelection, 0, nudge.y)
                                     }
                                     disabled={calibrationSelection[0] === 'x'}
                                 />
@@ -364,7 +361,7 @@ export default function CalibrationTab({
                             <IconButton
                                 icon="nudgeRight"
                                 onPress={() =>
-                                    nudgeCalibrationPoint(calibrationSelection, 1 / zoomDisplay, 0)
+                                    nudgeCalibrationPoint(calibrationSelection, nudge.x, 0)
                                 }
                                 disabled={calibrationSelection[0] === 'y'}
                             />
