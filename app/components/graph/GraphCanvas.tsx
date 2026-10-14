@@ -65,6 +65,7 @@ interface GraphCanvasProps {
             height: number;
         }>
     >;
+    zoomDisplay: number;
     setZoomDisplay: React.Dispatch<React.SetStateAction<number>>;
     setTranslation: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
 }
@@ -99,6 +100,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
         displaySize,
         imageSize,
         setViewportSize,
+        zoomDisplay,
         setZoomDisplay,
         setTranslation,
     } = props;
@@ -316,6 +318,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                         currentMode === 'points' && activeDataset?.locked === false
                                     }
                                     scale={scale}
+                                    zoomDisplay={zoomDisplay}
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
                                     sharedDatasets={sharedDatasets}
@@ -328,6 +331,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                         currentMode === 'points' && activeDataset?.locked === false
                                     }
                                     scale={scale}
+                                    zoomDisplay={zoomDisplay}
                                     imageWidth={imageWidth}
                                     imageHeight={imageHeight}
                                     sharedDatasets={sharedDatasets}

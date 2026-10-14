@@ -815,6 +815,7 @@ export default function MainScreen({
                                 setViewportSize={setViewportSize}
                                 imageSize={imageSize}
 
+                                zoomDisplay={zoomDisplay}
                                 setZoomDisplay={setZoomDisplay}
                                 setTranslation={setTranslation}
                             />

@@ -14,6 +14,7 @@ interface DraggableCrosshairGuideProps {
     axis: 'x' | 'y';
     isEnabled: boolean;
     scale: SharedValue<number>;
+    zoomDisplay: number;
     imageWidth: number;
     imageHeight: number;
     sharedDatasets: SharedValue<Dataset[]>;
@@ -25,6 +26,7 @@ export function DraggableCrosshairGuide({
     axis,
     isEnabled,
     scale,
+    zoomDisplay,
     imageWidth,
     imageHeight,
     sharedDatasets,
@@ -56,7 +58,11 @@ export function DraggableCrosshairGuide({
     // ---------------------------------------------------------------------
     // Gestures
     // ---------------------------------------------------------------------
-    const SLOP = 30;
+    // Keep a generous touch target at normal zoom, but reduce it as the
+    // image is magnified so nearby gestures are less likely to grab the guide.
+    const MAX_SLOP = 30;
+    const MIN_SLOP = 5;
+    const SLOP = Math.max(MIN_SLOP, Math.min(MAX_SLOP, MAX_SLOP / Math.max(zoomDisplay, 1)));
 
     const panGesture = Gesture.Pan()
         .enabled(isEnabled)
