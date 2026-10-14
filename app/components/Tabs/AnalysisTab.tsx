@@ -1,4 +1,5 @@
 import React from 'react';
+import * as Clipboard from 'expo-clipboard';
 import { View, StyleSheet, Text, TextStyle, ScrollView, Switch } from 'react-native';
 
 import { Calibration } from '../../calibration/types';
@@ -7,6 +8,7 @@ import { LinearRegressionResult } from '../../analysis/types';
 
 import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
 import AppIcon from '../AppIcon';
+import IconButton from '../IconButton';
 import { formatRegressionEquation } from '../../analysis/equationFormatter';
 import { AxisScale } from '../../calibration/constants';
 
@@ -165,6 +167,42 @@ export default function AnalysisTab({
                                     />
                                 </View>
                             </View>
+                        </View>
+                    )}
+
+                    {linearFit && activeDataset && (
+                        <View style={{ marginTop: 8, alignItems: 'flex-start' }}>
+                            <IconButton
+                                label="Export regression results"
+                                onPress={async () => {
+                                    const report = [
+                                        'Graph Digitizer — Regression Results',
+                                        '',
+                                        `Dataset: ${activeDataset.name}`,
+                                        `Model: ${modelType} regression`,
+                                        `X axis scale: ${calibration.x.scaleType}`,
+                                        `Y axis scale: ${calibration.y.scaleType}`,
+                                        '',
+                                        'Equation:',
+                                        formatRegressionEquation(linearFit, calibration),
+                                        '',
+                                        'Regression parameters:',
+                                        `Slope: ${linearFit.slope}`,
+                                        `Intercept: ${linearFit.intercept}`,
+                                        `R²: ${linearR2 == null ? 'Not available' : linearR2}`,
+                                        `Number of data points: ${activeDataset.points.length}`,
+                                        ...(calibration.x.scaleType !== 'linear' ||
+                                        calibration.y.scaleType !== 'linear'
+                                            ? [
+                                                  '',
+                                                  'Note: Regression uses logarithmically transformed coordinates.',
+                                              ]
+                                            : []),
+                                    ].join('\n');
+                                    await Clipboard.setStringAsync(report);
+                                    alert('Regression results copied!');
+                                }}
+                            />
                         </View>
                     )}
                 </View>
