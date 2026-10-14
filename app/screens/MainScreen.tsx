@@ -1133,6 +1133,10 @@ export default function MainScreen({
                                         pickImage={pickImage}
                                         storageReady={storageReady}
                                         lastShare={lastShare}
+                                        datasets={datasets}
+                                        activeDataset={activeDataset}
+                                        calibration={calibration}
+                                        calibratedState={calibratedState}
                                     />
                                 )}
 

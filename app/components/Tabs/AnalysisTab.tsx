@@ -1,17 +1,13 @@
 import React from 'react';
 import { View, StyleSheet, Text, TextStyle, ScrollView, Switch } from 'react-native';
 
-import * as Clipboard from 'expo-clipboard';
-
 import { Calibration } from '../../calibration/types';
 import { Dataset, DatasetStatistics } from '../../datasets/types';
 import { LinearRegressionResult } from '../../analysis/types';
 
 import { COLOURS, SPACING, TYPOGRAPHY } from '../../theme';
 import AppIcon from '../AppIcon';
-import IconButton from '../IconButton';
 import { formatRegressionEquation } from '../../analysis/equationFormatter';
-import { generateSimpleCSV } from '../../export/csv';
 import { AxisScale } from '../../calibration/constants';
 
 function getRegressionModelType(calibration: Calibration): string {
@@ -172,41 +168,6 @@ export default function AnalysisTab({
                         </View>
                     )}
                 </View>
-
-                <View style={styles.controls}>
-                    <View style={{ flex: 1 }}>
-                        <IconButton
-                            label="Export selected to CSV"
-                            onPress={async () => {
-                                if (!calibratedState) {
-                                    alert('Not calibrated');
-                                    return;
-                                }
-                                if (!activeDataset) {
-                                    alert('No selected dataset');
-                                    return;
-                                }
-                                const csv = generateSimpleCSV([activeDataset], calibration);
-                                await Clipboard.setStringAsync(csv);
-                                alert('Copied!');
-                            }}
-                        />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                        <IconButton
-                            label="Export all to CSV"
-                            onPress={async () => {
-                                if (!calibratedState) {
-                                    alert('Calibration incomplete');
-                                    return;
-                                }
-                                const csv = generateSimpleCSV(datasets, calibration);
-                                await Clipboard.setStringAsync(csv);
-                                alert('Copied!');
-                            }}
-                        />
-                    </View>
-                </View>
             </View>
         </ScrollView>
     );
@@ -238,12 +199,5 @@ const styles = StyleSheet.create({
         flexDirection: 'row',
         alignItems: 'center',
         gap: SPACING.xs,
-    },
-
-    controls: {
-        flexDirection: 'row',
-        flexWrap: 'wrap',
-        gap: 8,
-        marginTop: 8,
     },
 });
