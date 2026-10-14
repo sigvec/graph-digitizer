@@ -54,6 +54,9 @@ export function DraggableCrosshairGuide({
 
     const startX = useSharedValue(0);
     const startY = useSharedValue(0);
+    // Once a second finger joins, suspend crosshair movement until this
+    // gesture ends; never resume mid-gesture after one finger is lifted.
+    const multiTouchDetected = useSharedValue(false);
 
     // ---------------------------------------------------------------------
     // Gestures
@@ -67,6 +70,13 @@ export function DraggableCrosshairGuide({
     const panGesture = Gesture.Pan()
         .enabled(isEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
+        .onTouchesDown((event) => {
+            if (event.numberOfTouches === 1) {
+                multiTouchDetected.value = false;
+            } else {
+                multiTouchDetected.value = true;
+            }
+        })
         .onStart(() => {
             const datasets = sharedDatasets.value;
             const sharedPoint = findSharedPoint(datasets, selectedPointRef);
@@ -80,6 +90,11 @@ export function DraggableCrosshairGuide({
             dragY.value = pointY;
         })
         .onUpdate((event) => {
+            if (event.numberOfPointers > 1) {
+                multiTouchDetected.value = true;
+            }
+            if (multiTouchDetected.value) return;
+
             if (axis === 'x') {
                 dragY.value =
                     startY.value +
@@ -112,8 +127,11 @@ export function DraggableCrosshairGuide({
         })
         .onEnd(() => {
             if (selectedPointRef?.pointId !== undefined) {
-                runOnJS(onDragComplete)(selectedPointRef?.pointId, dragX.value, dragY.value);
+                runOnJS(onDragComplete)(selectedPointRef.pointId, dragX.value, dragY.value);
             }
+        })
+        .onFinalize(() => {
+            multiTouchDetected.value = false;
         });
 
     // ---------------------------------------------------------------------

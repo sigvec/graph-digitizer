@@ -3,7 +3,7 @@ import { validateProject, validateStoredProject } from '../validateProject';
 const validProject = () => ({
     formatVersion: 1,
     name: 'Test project',
-    appVersion: '0.6.0',
+    appVersion: '0.6.1',
     device: { platform: 'test', version: '1' },
     image: null,
     datasetCount: 1,

@@ -56,6 +56,10 @@ export function DraggablePoint({
 
     const contextX = useSharedValue(0);
     const contextY = useSharedValue(0);
+    // Once a second finger joins, cancel point movement for the rest of this
+    // gesture. Do not resume when one finger is lifted, as translation values
+    // may still include movement from the multi-touch phase.
+    const multiTouchDetected = useSharedValue(false);
 
     const SLOP = 80;
 
@@ -63,6 +67,13 @@ export function DraggablePoint({
     const panGesture = Gesture.Pan()
         .enabled(isEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
+        .onTouchesDown((event) => {
+            if (event.numberOfTouches === 1) {
+                multiTouchDetected.value = false;
+            } else {
+                multiTouchDetected.value = true;
+            }
+        })
         .onStart(() => {
             // Use starting positions directly as initial shared values
             const sharedDataset = sharedDatasets.value.find((d) => d.id === datasetId);
@@ -79,6 +90,11 @@ export function DraggablePoint({
             });
         })
         .onUpdate((event) => {
+            if (event.numberOfPointers > 1) {
+                multiTouchDetected.value = true;
+            }
+            if (multiTouchDetected.value) return;
+
             translateX.value =
                 contextX.value + (event.translationX * LOGICAL_WIDTH) / imageWidth / scale.value;
             translateY.value =
@@ -94,7 +110,12 @@ export function DraggablePoint({
             });
         })
         .onEnd(() => {
+            // Commit the last valid one-finger position, even if movement was
+            // suspended after a second finger joined.
             runOnJS(onDragComplete)(item.id, translateX.value, translateY.value);
+        })
+        .onFinalize(() => {
+            multiTouchDetected.value = false;
         });
 
     const RADIUS = 40;

@@ -6,7 +6,7 @@ import { ProjectExportData } from './types';
 import { CURRENT_PROJECT_FORMAT_VERSION } from '../../frontend/services/sharing/projectMigrations';
 
 import Constants from 'expo-constants';
-const APP_VERSION = Constants.expoConfig?.version ?? '0.6.0';
+const APP_VERSION = Constants.expoConfig?.version ?? '0.6.1';
 
 export function buildProjectExport(projectData: ProjectExportData): Project {
     return {

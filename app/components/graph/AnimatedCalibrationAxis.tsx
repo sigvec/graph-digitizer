@@ -38,6 +38,9 @@ export function AnimatedCalibrationAxis({
 
     const contextX = useSharedValue(0);
     const contextY = useSharedValue(0);
+    // Once a second finger joins, suspend calibration-line movement until this
+    // gesture ends; never resume mid-gesture after one finger is lifted.
+    const multiTouchDetected = useSharedValue(false);
 
     const SLOP = 5;
 
@@ -46,11 +49,23 @@ export function AnimatedCalibrationAxis({
     const panGesture = Gesture.Pan()
         .enabled(calibrationEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
+        .onTouchesDown((event) => {
+            if (event.numberOfTouches === 1) {
+                multiTouchDetected.value = false;
+            } else {
+                multiTouchDetected.value = true;
+            }
+        })
         .onStart(() => {
             contextX.value = sharedCalibrationPoints.value[calibrationPoint].x;
             contextY.value = sharedCalibrationPoints.value[calibrationPoint].y;
         })
         .onUpdate((event) => {
+            if (event.numberOfPointers > 1) {
+                multiTouchDetected.value = true;
+            }
+            if (multiTouchDetected.value) return;
+
             const c = {
                 ...sharedCalibrationPoints.value,
             };
@@ -81,6 +96,9 @@ export function AnimatedCalibrationAxis({
                 sharedCalibrationPoints.value[calibrationPoint].x,
                 sharedCalibrationPoints.value[calibrationPoint].y,
             );
+        })
+        .onFinalize(() => {
+            multiTouchDetected.value = false;
         });
 
     const animatedStyleContainer = useAnimatedStyle(() => {

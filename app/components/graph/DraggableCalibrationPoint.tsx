@@ -46,17 +46,32 @@ export function DraggableCalibrationPoint({
 
     const contextX = useSharedValue(0);
     const contextY = useSharedValue(0);
+    // Once a second finger joins, suspend calibration-point movement until
+    // this gesture ends; never resume mid-gesture after one finger is lifted.
+    const multiTouchDetected = useSharedValue(false);
 
     const SLOP = 50;
 
     const panGesture = Gesture.Pan()
         .enabled(calibrationEnabled)
         .hitSlop({ left: SLOP, right: SLOP, top: SLOP, bottom: SLOP })
+        .onTouchesDown((event) => {
+            if (event.numberOfTouches === 1) {
+                multiTouchDetected.value = false;
+            } else {
+                multiTouchDetected.value = true;
+            }
+        })
         .onStart(() => {
             contextX.value = sharedCalibrationPoints.value[calibrationType].x ?? 0;
             contextY.value = sharedCalibrationPoints.value[calibrationType].y ?? 0;
         })
         .onUpdate((event) => {
+            if (event.numberOfPointers > 1) {
+                multiTouchDetected.value = true;
+            }
+            if (multiTouchDetected.value) return;
+
             let translateX;
             let translateY;
 
@@ -128,11 +143,16 @@ export function DraggableCalibrationPoint({
             sharedCalibrationPoints.value = c;
         })
         .onEnd(() => {
+            // Persist the last valid position if movement was suspended by a
+            // multi-touch gesture.
             runOnJS(onDragComplete)(
                 calibrationType,
                 sharedCalibrationPoints.value[calibrationType].x ?? 0,
                 sharedCalibrationPoints.value[calibrationType].y ?? 0,
             );
+        })
+        .onFinalize(() => {
+            multiTouchDetected.value = false;
         });
 
     const RADIUS = 60;
