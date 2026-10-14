@@ -110,6 +110,11 @@ export default function PointTab({
                     <Text style={styles.statusText}>(No selection)</Text>
                 )}
                 <IconButton
+                    label="Deselect"
+                    onPress={() => setSelectedPointRef(null)}
+                    disabled={!selectedPointRef}
+                />
+                <IconButton
                     icon="next"
                     onPress={() => {
                         if (selectedPointIndex < 0) {
