@@ -47,14 +47,41 @@ export function useCanvasGestures({
     const maxScale = fitScale * 10;
     const minScale = fitScale * 0.5;
 
+    // Pan translation is cumulative for the lifetime of the gesture. Rebase it
+    // whenever the pointer count changes so lifting one finger after a pinch
+    // cannot apply movement accumulated while two fingers were down.
+    const panTranslationStartX = useSharedValue(0);
+    const panTranslationStartY = useSharedValue(0);
+    const panBaseTranslateX = useSharedValue(0);
+    const panBaseTranslateY = useSharedValue(0);
+    const panLastPointerCount = useSharedValue(0);
+
     const pan = Gesture.Pan()
         .onStart((e) => {
-            if (e.numberOfPointers !== 1) return;
+            panTranslationStartX.value = e.translationX;
+            panTranslationStartY.value = e.translationY;
+            panBaseTranslateX.value = translateX.value;
+            panBaseTranslateY.value = translateY.value;
+            panLastPointerCount.value = e.numberOfPointers;
         })
         .onUpdate((e) => {
-            if (e.numberOfPointers !== 1) return;
-            translateX.value = savedTranslateX.value + e.translationX;
-            translateY.value = savedTranslateY.value + e.translationY;
+            const pointerCount = e.numberOfPointers;
+
+            if (pointerCount !== panLastPointerCount.value) {
+                // Keep the current visual position and begin a fresh pan delta.
+                panLastPointerCount.value = pointerCount;
+                panTranslationStartX.value = e.translationX;
+                panTranslationStartY.value = e.translationY;
+                panBaseTranslateX.value = translateX.value;
+                panBaseTranslateY.value = translateY.value;
+            }
+
+            if (pointerCount !== 1) return;
+
+            translateX.value =
+                panBaseTranslateX.value + e.translationX - panTranslationStartX.value;
+            translateY.value =
+                panBaseTranslateY.value + e.translationY - panTranslationStartY.value;
         })
         .onEnd(() => {
             savedTranslateX.value = translateX.value;
@@ -86,13 +113,9 @@ export function useCanvasGestures({
 
             // 3. Adjust the layout translation cleanly based on the locked anchor point
             translateX.value =
-                scaleRatio +
-                savedTranslateX.value +
-                savedScale.value * (focalX.value * (1 - scaleRatio));
+                savedTranslateX.value + savedScale.value * (focalX.value * (1 - scaleRatio));
             translateY.value =
-                scaleRatio +
-                savedTranslateY.value +
-                savedScale.value * (focalY.value * (1 - scaleRatio));
+                savedTranslateY.value + savedScale.value * (focalY.value * (1 - scaleRatio));
         })
         .onEnd(() => {
             savedScale.value = scale.value;
