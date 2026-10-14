@@ -2,16 +2,27 @@ import { transformPoint } from '../calibration/transform';
 import type { Calibration } from '../calibration/types';
 import type { Dataset } from '../datasets/types';
 
+function escapeCSVField(value: string): string {
+    if (!/[",\r\n]/.test(value)) {
+        return value;
+    }
+
+    return `"${value.replace(/"/g, '""')}"`;
+}
+
 export function generateSimpleCSV(datasets: Dataset[], calibration: Calibration): string {
-    let rows = ['series,x,y'];
+    const rows = ['series,x,y'];
 
-    datasets.forEach((d) => {
-        const pts = [...d.points].sort((a, b) => a.x - b.x);
-        const transformed = pts.map((p) => transformPoint(p, calibration)).filter(Boolean);
+    datasets.forEach((dataset) => {
+        const points = [...dataset.points].sort((a, b) => a.x - b.x);
+        const transformedPoints = points
+            .map((point) => transformPoint(point, calibration))
+            .filter((point) => point !== null);
 
-        // raw data
-        transformed.forEach((p) => {
-            p && rows.push(`${d.name},${p.x},${p.y},`);
+        transformedPoints.forEach((point) => {
+            if (point) {
+                rows.push(`${escapeCSVField(dataset.name)},${point.x},${point.y}`);
+            }
         });
     });
 
