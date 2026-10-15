@@ -81,7 +81,7 @@ Tap a curve to trace it automatically.
 
 ## Status
 
-Version 0.6.1
+Version 0.7.0
 
 This project is under active development. The current release supports local project storage and public project sharing.
 

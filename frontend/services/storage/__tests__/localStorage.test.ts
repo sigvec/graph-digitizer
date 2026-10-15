@@ -21,7 +21,7 @@ const mockStorage = AsyncStorage as jest.Mocked<typeof AsyncStorage>;
 const validProject = (id: string) => ({
     formatVersion: 1,
     name: `Project ${id}`,
-    appVersion: '0.6.1',
+    appVersion: '0.7.0',
     device: { platform: 'test', version: '1' },
     image: null,
     calibration: {

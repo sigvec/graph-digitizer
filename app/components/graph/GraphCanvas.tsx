@@ -368,7 +368,7 @@ export default function GraphCanvas(props: GraphCanvasProps) {
                                     return (
                                         <Svg key={d.id} style={[StyleSheet.absoluteFill]}>
                                             <AnimatedDatasetPath
-                                                datasetIndex={datasetIndex}
+                                                datasetId={d.id}
                                                 sharedDatasets={sharedDatasets}
                                                 imageWidth={imageWidth}
                                                 imageHeight={imageHeight}

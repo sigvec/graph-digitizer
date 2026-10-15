@@ -8,7 +8,7 @@ import type { Dataset } from '../../datasets/types';
 const AnimatedPath = Animated.createAnimatedComponent(Path);
 
 interface AnimatedDatasetPathProps {
-    datasetIndex: number;
+    datasetId: string;
     sharedDatasets: SharedValue<Dataset[]>;
     imageWidth: number;
     imageHeight: number;
@@ -18,7 +18,7 @@ interface AnimatedDatasetPathProps {
 }
 
 export function AnimatedDatasetPath({
-    datasetIndex,
+    datasetId,
     sharedDatasets,
     imageWidth,
     imageHeight,
@@ -27,7 +27,10 @@ export function AnimatedDatasetPath({
     scale,
 }: AnimatedDatasetPathProps) {
     const animatedProps = useAnimatedProps<PathProps>(() => {
-        const points = sharedDatasets.value[datasetIndex].points;
+        // React state can render a newly added dataset before the shared-value
+        // copy has caught up. Resolve by stable ID and tolerate that brief gap.
+        const dataset = sharedDatasets.value.find((item) => item.id === datasetId);
+        const points = dataset?.points;
         if (!points || points.length < 2) {
             return { d: '' };
         }
