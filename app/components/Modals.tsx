@@ -1,5 +1,14 @@
 import React, { useState, useEffect, ReactNode } from 'react';
-import { View, Text, StyleSheet, TextInput, TouchableOpacity, Modal } from 'react-native';
+import {
+    View,
+    Text,
+    StyleSheet,
+    TextInput,
+    TouchableOpacity,
+    Modal,
+    Pressable,
+    ScrollView,
+} from 'react-native';
 
 import IconButton from './IconButton';
 import { DATASET_COLOURS } from '../constants/colours';
@@ -44,6 +53,7 @@ export function TextInputModal({
     return (
         <Modal visible={visible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
+                <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
                 <View style={styles.modalCard}>
                     <Text style={styles.modalTitle}>{title}</Text>
 
@@ -90,6 +100,7 @@ export function ColourPickerModal({
     return (
         <Modal visible={visible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
+                <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
                 <View style={styles.modalCard}>
                     <Text style={styles.modalTitle}>{title}</Text>
 
@@ -154,24 +165,32 @@ export function ProjectMenuModal({
     return (
         <Modal visible={visible} transparent animationType="fade">
             <View style={styles.modalOverlay}>
-                <View style={styles.modalCard}>
-                    <IconButton label="Save" onPress={handleSave} />
+                <Pressable style={StyleSheet.absoluteFill} onPress={onCancel} />
+                <View style={styles.projectMenuCard}>
+                    <ScrollView
+                        style={styles.projectMenuScroll}
+                        contentContainerStyle={styles.projectMenuContent}
+                        showsVerticalScrollIndicator
+                        keyboardShouldPersistTaps="handled"
+                    >
+                        <IconButton label="Save" onPress={handleSave} />
 
-                    <IconButton label="Save As..." onPress={handleSaveAs} />
+                        <IconButton label="Save As..." onPress={handleSaveAs} />
 
-                    <IconButton label="Rename Project" onPress={handleRenameProject} />
+                        <IconButton label="Rename Project" onPress={handleRenameProject} />
 
-                    <IconButton label="Close Project" onPress={handleCloseProject} />
+                        <IconButton label="Close Project" onPress={handleCloseProject} />
 
-                    <IconButton label="New Project" onPress={handleNewProject} />
+                        <IconButton label="New Project" onPress={handleNewProject} />
 
-                    <IconButton label="Share Project" onPress={handleShareProject} />
+                        <IconButton label="Share Project" onPress={handleShareProject} />
 
-                    <IconButton label="Import Project" onPress={handleImportProject} />
+                        <IconButton label="Import Project" onPress={handleImportProject} />
 
-                    <IconButton label="Help" onPress={handleShowHelp} />
+                        <IconButton label="Help" onPress={handleShowHelp} />
 
-                    <IconButton label="Cancel" onPress={onCancel} />
+                        <IconButton label="Cancel" onPress={onCancel} />
+                    </ScrollView>
                 </View>
             </View>
         </Modal>
@@ -187,12 +206,14 @@ interface DialogProps {
     title: string;
     children: ReactNode;
     buttons?: { text: string; onPress: () => void }[];
+    onDismiss?: () => void;
 }
 
-export function Dialog({ visible = false, title = '', children, buttons }: DialogProps) {
+export function Dialog({ visible = false, title = '', children, buttons, onDismiss }: DialogProps) {
     return (
         <Modal transparent animationType="fade" visible={visible}>
             <View style={styles.modalOverlay}>
+                {onDismiss && <Pressable style={StyleSheet.absoluteFill} onPress={onDismiss} />}
                 <View style={styles.modalCard}>
                     <Text style={styles.modalTitle}>{title}</Text>
 
@@ -240,6 +261,22 @@ const styles = StyleSheet.create({
         backgroundColor: '#fff',
         borderRadius: 12,
         padding: 20,
+        gap: 10,
+    },
+
+    projectMenuCard: {
+        width: '80%',
+        maxHeight: '90%',
+        backgroundColor: '#fff',
+        borderRadius: 12,
+        padding: 20,
+    },
+
+    projectMenuScroll: {
+        flexShrink: 1,
+    },
+
+    projectMenuContent: {
         gap: 10,
     },
 

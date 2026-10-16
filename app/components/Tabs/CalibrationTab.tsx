@@ -508,7 +508,7 @@ const styles = StyleSheet.create({
         marginTop: 4,
         alignItems: 'center',
         justifyContent: 'center',
-        paddingHorizontal: SPACING.lg,
+        paddingHorizontal: SPACING.sm,
         borderRadius: 10,
     },
 

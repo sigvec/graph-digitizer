@@ -3,7 +3,7 @@
         "name": "Graph Digitizer",
         "slug": "graph-digitizer",
         "version": "0.7.0",
-        "orientation": "portrait",
+        "orientation": "default",
         "icon": "./assets/icon.png",
         "userInterfaceStyle": "light",
         "newArchEnabled": true,

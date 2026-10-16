@@ -60,23 +60,25 @@ export default function ProjectListScreen({ onSelect, onBack, currentId }: Proje
 
     if (projects.length === 0) {
         return (
-            <View style={{ padding: 20 }}>
-                <IconButton label="Back" onPress={onBack} />
+            <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
+                <View style={{ flex: 1, padding: 20 }}>
+                    <IconButton label="Back" onPress={onBack} />
 
-                <Text
-                    style={{
-                        marginTop: 20,
-                        fontSize: 16,
-                    }}
-                >
-                    No saved projects yet.
-                </Text>
-            </View>
+                    <Text
+                        style={{
+                            marginTop: 20,
+                            fontSize: 16,
+                        }}
+                    >
+                        No saved projects yet.
+                    </Text>
+                </View>
+            </SafeAreaView>
         );
     }
 
     return (
-        <SafeAreaView style={styles.container} edges={['top', 'left', 'right']}>
+        <SafeAreaView style={styles.container} edges={['top', 'bottom', 'left', 'right']}>
             <View style={{ flex: 1 }}>
                 <FlatList
                     data={projects}

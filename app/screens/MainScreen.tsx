@@ -1,5 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { View, StyleSheet, Text, ScrollView, Alert, ActivityIndicator } from 'react-native';
+import {
+    View,
+    StyleSheet,
+    Text,
+    ScrollView,
+    Alert,
+    ActivityIndicator,
+    useWindowDimensions,
+} from 'react-native';
 
 import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import * as Clipboard from 'expo-clipboard';
@@ -81,6 +89,11 @@ export default function MainScreen({
     isDirty,
     onDirtyChanged,
 }: MainScreenProps) {
+    // Track the available window dimensions so the workspace can adapt when
+    // the device rotates or the app is resized.
+    const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+    const isLandscape = windowWidth > windowHeight;
+
     // ==================================================
     // State
     // ==================================================
@@ -729,18 +742,32 @@ export default function MainScreen({
     return (
         <GestureHandlerRootView style={{ flex: 1 }}>
             <SafeAreaView style={styles.container} edges={['top', 'left', 'right', 'bottom']}>
-                <View style={styles.titleBar}>
-                    <View
-                        style={{
-                            flex: 1,
-                            alignItems: 'flex-start',
-                        }}
-                    >
+                <View style={[styles.titleBar, isLandscape && styles.titleBarLandscape]}>
+                    <View style={styles.projectTitle}>
                         <MenuButton
                             label={projectName}
                             onPress={() => setRenameProjectVisible(true)}
                         />
                     </View>
+
+                    {isLandscape && (
+                        <View style={styles.landscapeToolbarActions}>
+                            <IconButton
+                                icon="undo"
+                                label="Undo"
+                                onPress={handleUndoWithTraceCancel}
+                                disabled={!canUndo && tracePhase === 'idle'}
+                            />
+                            <IconButton
+                                icon="redo"
+                                label="Redo"
+                                onPress={handleRedo}
+                                disabled={!canRedo}
+                            />
+                            <IconButton icon="centreImage" label="Centre" onPress={centreView} />
+                            <IconButton icon="fit" label="Fit" onPress={fitCurrentImage} />
+                        </View>
+                    )}
 
                     <View style={styles.titleBarActions}>
                         <IconButton icon="save" onPress={handleSave} disabled={!isDirty} />
@@ -749,491 +776,507 @@ export default function MainScreen({
                     </View>
                 </View>
 
-                <View style={styles.toolBar}>
-                    <View style={styles.toolBarButton}>
-                        <IconButton
-                            icon="undo"
-                            label="Undo"
-                            onPress={handleUndoWithTraceCancel}
-                            disabled={!canUndo && tracePhase === 'idle'}
-                        />
-                    </View>
-
-                    <View style={styles.toolBarButton}>
-                        <IconButton
-                            icon="redo"
-                            label="Redo"
-                            onPress={handleRedo}
-                            disabled={!canRedo}
-                        />
-                    </View>
-
-                    <View style={styles.separator} />
-
-                    <View style={styles.toolBarButton}>
-                        <IconButton icon="centreImage" label="Centre" onPress={centreView} />
-                    </View>
-
-                    <View style={styles.toolBarButton}>
-                        <IconButton icon="fit" label="Fit" onPress={fitCurrentImage} />
-                    </View>
-                </View>
-
-                <View style={styles.canvasArea}>
-                    <View style={styles.workspace}>
-                        <View style={styles.canvasContainer}>
-                            <GraphCanvas
-                                image={image}
-                                pickImage={pickImage}
-                                storageReady={storageReady}
-                                datasets={datasets}
-                                calibration={calibration}
-                                currentMode={mode}
-
-                                activeDatasetId={activeDatasetId}
-                                activeDataset={activeDataset}
-                                selectedPointRef={selectedPointRef}
-                                setSelectedPointRef={setSelectedPointRef}
-                                transformedActive={transformedActive}
-                                regression={linearFit}
-                                showRegressionLine={showRegressionLine}
-                                commitPointDrag={commitPointDrag}
-                                commitCalibrationDrag={commitCalibrationDrag}
-                                addPoint={addPoint}
-                                onCanvasTap={handleTraceTap}
-                                tracePreview={tracePreview}
-                                traceStart={traceStart}
-
-                                scale={scale}
-                                translateX={translateX}
-                                translateY={translateY}
-                                savedScale={savedScale}
-                                savedTranslateX={savedTranslateX}
-                                savedTranslateY={savedTranslateY}
-
-                                displaySize={displaySize}
-                                setViewportSize={setViewportSize}
-                                imageSize={imageSize}
-
-                                zoomDisplay={zoomDisplay}
-                                setZoomDisplay={setZoomDisplay}
-                                setTranslation={setTranslation}
+                {!isLandscape && (
+                    <View style={styles.toolBar}>
+                        <View style={styles.toolBarButton}>
+                            <IconButton
+                                icon="undo"
+                                label="Undo"
+                                onPress={handleUndoWithTraceCancel}
+                                disabled={!canUndo && tracePhase === 'idle'}
                             />
                         </View>
 
-                        <View style={styles.statusBar}>
-                            <View
-                                style={[
-                                    styles.statusBarSection,
-                                    {
-                                        flex: 2,
-                                    },
-                                ]}
-                            >
-                                {mode === 'points' && (
-                                    <>
-                                        <View style={styles.datasetInfo}>
-                                            <View
-                                                style={[
-                                                    {
-                                                        width: 6,
-                                                        height: 6,
-                                                        borderRadius: 3,
-                                                        marginRight: 6,
-                                                        backgroundColor: activeDataset.colour,
-                                                    },
-                                                ]}
-                                            />
+                        <View style={styles.toolBarButton}>
+                            <IconButton
+                                icon="redo"
+                                label="Redo"
+                                onPress={handleRedo}
+                                disabled={!canRedo}
+                            />
+                        </View>
 
-                                            <Text
-                                                style={styles.statusText}
-                                                numberOfLines={1}
-                                                ellipsizeMode="tail"
-                                            >
-                                                {activeDataset?.name || 'None'}
-                                            </Text>
-                                        </View>
+                        <View style={styles.separator} />
 
-                                        {selectedPointIndex ? (
-                                            <Text style={styles.statusText}>
-                                                Point {selectedPointIndex + 1} / {pointCount}
-                                            </Text>
-                                        ) : (
-                                            <Text style={styles.statusText}>(No selection)</Text>
-                                        )}
-                                    </>
-                                )}
+                        <View style={styles.toolBarButton}>
+                            <IconButton icon="centreImage" label="Centre" onPress={centreView} />
+                        </View>
 
-                                {mode === 'calibration' && (
-                                    <>
-                                        <Text style={styles.statusText}>Calibrate mode</Text>
-                                        <Text style={styles.statusText}>
-                                            {calibrationSelection === 'origin' && '[Nudge origin]'}
-                                            {calibrationSelection === 'x0' && '[Nudge X0]'}
-                                            {calibrationSelection === 'x1' && '[Nudge X1]'}
-                                            {calibrationSelection === 'y0' && '[Nudge Y0]'}
-                                            {calibrationSelection === 'y1' && '[Nudge Y1]'}
-                                        </Text>
-                                    </>
-                                )}
+                        <View style={styles.toolBarButton}>
+                            <IconButton icon="fit" label="Fit" onPress={fitCurrentImage} />
+                        </View>
+                    </View>
+                )}
+
+                <View style={[styles.mainWorkspace, isLandscape && styles.mainWorkspaceLandscape]}>
+                    <View style={[styles.canvasArea, isLandscape && styles.landscapeHalf]}>
+                        <View style={styles.workspace}>
+                            <View style={styles.canvasContainer}>
+                                <GraphCanvas
+                                    image={image}
+                                    pickImage={pickImage}
+                                    storageReady={storageReady}
+                                    datasets={datasets}
+                                    calibration={calibration}
+                                    currentMode={mode}
+
+                                    activeDatasetId={activeDatasetId}
+                                    activeDataset={activeDataset}
+                                    selectedPointRef={selectedPointRef}
+                                    setSelectedPointRef={setSelectedPointRef}
+                                    transformedActive={transformedActive}
+                                    regression={linearFit}
+                                    showRegressionLine={showRegressionLine}
+                                    commitPointDrag={commitPointDrag}
+                                    commitCalibrationDrag={commitCalibrationDrag}
+                                    addPoint={addPoint}
+                                    onCanvasTap={handleTraceTap}
+                                    tracePreview={tracePreview}
+                                    traceStart={traceStart}
+
+                                    scale={scale}
+                                    translateX={translateX}
+                                    translateY={translateY}
+                                    savedScale={savedScale}
+                                    savedTranslateX={savedTranslateX}
+                                    savedTranslateY={savedTranslateY}
+
+                                    displaySize={displaySize}
+                                    setViewportSize={setViewportSize}
+                                    imageSize={imageSize}
+
+                                    zoomDisplay={zoomDisplay}
+                                    setZoomDisplay={setZoomDisplay}
+                                    setTranslation={setTranslation}
+                                />
                             </View>
 
-                            {mode === 'points' && (
-                                <View style={styles.statusBarSection}>
-                                    {selectedPointData ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X: {graphPoint ? graphPoint.x.toFixed(1) : 'None'}
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X:
-                                        </Text>
+                            <View style={styles.statusBar}>
+                                <View
+                                    style={[
+                                        styles.statusBarSection,
+                                        {
+                                            flex: 2,
+                                        },
+                                    ]}
+                                >
+                                    {mode === 'points' && (
+                                        <>
+                                            <View style={styles.datasetInfo}>
+                                                <View
+                                                    style={[
+                                                        {
+                                                            width: 6,
+                                                            height: 6,
+                                                            borderRadius: 3,
+                                                            marginRight: 6,
+                                                            backgroundColor: activeDataset.colour,
+                                                        },
+                                                    ]}
+                                                />
+
+                                                <Text
+                                                    style={styles.statusText}
+                                                    numberOfLines={1}
+                                                    ellipsizeMode="tail"
+                                                >
+                                                    {activeDataset?.name || 'None'}
+                                                </Text>
+                                            </View>
+
+                                            {selectedPointIndex ? (
+                                                <Text style={styles.statusText}>
+                                                    Point {selectedPointIndex + 1} / {pointCount}
+                                                </Text>
+                                            ) : (
+                                                <Text style={styles.statusText}>
+                                                    (No selection)
+                                                </Text>
+                                            )}
+                                        </>
                                     )}
 
-                                    {selectedPointData ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y: {graphPoint ? graphPoint.y.toFixed(1) : 'None'}
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y:
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-
-                            {mode === 'calibration' && calibrationSelection === 'origin' && (
-                                <View style={styles.statusBarSection}>
-                                    {calibration.origin ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X:{' '}
-                                            {calibration.origin.x
-                                                ? calibration.origin.x.toFixed(1)
-                                                : 'None'}
-                                            %
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X:
-                                        </Text>
-                                    )}
-
-                                    {calibration.origin ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y:{' '}
-                                            {calibration.origin.y
-                                                ? (100 - calibration.origin.y).toFixed(1)
-                                                : 'None'}
-                                            %
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y:
-                                        </Text>
-                                    )}
-                                </View>
-                            )}
-
-                            {mode === 'calibration' && calibrationSelection[0] === 'x' && (
-                                <View style={styles.statusBarSection}>
-                                    {calibration.x.p0 ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X0:{' '}
-                                            {calibration.x.p0
-                                                ? calibration.x.p0.toFixed(1)
-                                                : 'None'}
-                                            %
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X0:
-                                        </Text>
-                                    )}
-
-                                    {calibration.x.p1 ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X1:{' '}
-                                            {calibration.x.p1
-                                                ? calibration.x.p1.toFixed(1)
-                                                : 'None'}
-                                            %
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            X1:
-                                        </Text>
+                                    {mode === 'calibration' && (
+                                        <>
+                                            <Text style={styles.statusText}>Calibrate mode</Text>
+                                            <Text style={styles.statusText}>
+                                                {calibrationSelection === 'origin' &&
+                                                    '[Nudge origin]'}
+                                                {calibrationSelection === 'x0' && '[Nudge X0]'}
+                                                {calibrationSelection === 'x1' && '[Nudge X1]'}
+                                                {calibrationSelection === 'y0' && '[Nudge Y0]'}
+                                                {calibrationSelection === 'y1' && '[Nudge Y1]'}
+                                            </Text>
+                                        </>
                                     )}
                                 </View>
-                            )}
 
-                            {mode === 'calibration' && calibrationSelection[0] === 'y' && (
-                                <View style={styles.statusBarSection}>
-                                    {calibration.y.p0 ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y0:{' '}
-                                            {calibration.y.p0
-                                                ? (100 - calibration.y.p0).toFixed(1)
-                                                : 'None'}
-                                            %
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y0:
-                                        </Text>
-                                    )}
+                                {mode === 'points' && (
+                                    <View style={styles.statusBarSection}>
+                                        {selectedPointData ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X: {graphPoint ? graphPoint.x.toFixed(1) : 'None'}
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X:
+                                            </Text>
+                                        )}
 
-                                    {calibration.y.p1 ? (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y1:{' '}
-                                            {calibration.y.p1
-                                                ? (100 - calibration.y.p1).toFixed(1)
-                                                : 'None'}
-                                            %{' '}
-                                        </Text>
-                                    ) : (
-                                        <Text numberOfLines={1} style={styles.statusTextCoords}>
-                                            Y1:
-                                        </Text>
-                                    )}
+                                        {selectedPointData ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y: {graphPoint ? graphPoint.y.toFixed(1) : 'None'}
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y:
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                                {mode === 'calibration' && calibrationSelection === 'origin' && (
+                                    <View style={styles.statusBarSection}>
+                                        {calibration.origin ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X:{' '}
+                                                {calibration.origin.x
+                                                    ? calibration.origin.x.toFixed(1)
+                                                    : 'None'}
+                                                %
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X:
+                                            </Text>
+                                        )}
+
+                                        {calibration.origin ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y:{' '}
+                                                {calibration.origin.y
+                                                    ? (100 - calibration.origin.y).toFixed(1)
+                                                    : 'None'}
+                                                %
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y:
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                                {mode === 'calibration' && calibrationSelection[0] === 'x' && (
+                                    <View style={styles.statusBarSection}>
+                                        {calibration.x.p0 ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X0:{' '}
+                                                {calibration.x.p0
+                                                    ? calibration.x.p0.toFixed(1)
+                                                    : 'None'}
+                                                %
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X0:
+                                            </Text>
+                                        )}
+
+                                        {calibration.x.p1 ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X1:{' '}
+                                                {calibration.x.p1
+                                                    ? calibration.x.p1.toFixed(1)
+                                                    : 'None'}
+                                                %
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                X1:
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                                {mode === 'calibration' && calibrationSelection[0] === 'y' && (
+                                    <View style={styles.statusBarSection}>
+                                        {calibration.y.p0 ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y0:{' '}
+                                                {calibration.y.p0
+                                                    ? (100 - calibration.y.p0).toFixed(1)
+                                                    : 'None'}
+                                                %
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y0:
+                                            </Text>
+                                        )}
+
+                                        {calibration.y.p1 ? (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y1:{' '}
+                                                {calibration.y.p1
+                                                    ? (100 - calibration.y.p1).toFixed(1)
+                                                    : 'None'}
+                                                %{' '}
+                                            </Text>
+                                        ) : (
+                                            <Text numberOfLines={1} style={styles.statusTextCoords}>
+                                                Y1:
+                                            </Text>
+                                        )}
+                                    </View>
+                                )}
+
+                                <View
+                                    style={[
+                                        styles.statusBarSection,
+                                        {
+                                            alignItems: 'flex-end',
+                                        },
+                                    ]}
+                                >
+                                    <View style={styles.statusBarIndicator}>
+                                        <AppIcon
+                                            name={'notVisible'}
+                                            size={14}
+                                            colour={
+                                                mode === 'points' && !activeDataset.visible
+                                                    ? COLOURS.alert
+                                                    : COLOURS.invisible
+                                            }
+                                        />
+                                        <AppIcon
+                                            name={'locked'}
+                                            size={14}
+                                            colour={
+                                                mode === 'points' && activeDataset.locked
+                                                    ? COLOURS.alert
+                                                    : COLOURS.invisible
+                                            }
+                                        />
+                                    </View>
+                                    <Text numberOfLines={1} style={styles.statusText}>
+                                        Zoom:{' '}
+                                        {zoomDisplay > 0.1
+                                            ? (zoomDisplay * 100).toFixed(0)
+                                            : (zoomDisplay * 100).toFixed(1)}
+                                        %
+                                    </Text>
                                 </View>
-                            )}
-
-                            <View
-                                style={[
-                                    styles.statusBarSection,
-                                    {
-                                        alignItems: 'flex-end',
-                                    },
-                                ]}
-                            >
-                                <View style={styles.statusBarIndicator}>
-                                    <AppIcon
-                                        name={'notVisible'}
-                                        size={14}
-                                        colour={
-                                            mode === 'points' && !activeDataset.visible
-                                                ? COLOURS.alert
-                                                : COLOURS.invisible
-                                        }
-                                    />
-                                    <AppIcon
-                                        name={'locked'}
-                                        size={14}
-                                        colour={
-                                            mode === 'points' && activeDataset.locked
-                                                ? COLOURS.alert
-                                                : COLOURS.invisible
-                                        }
-                                    />
-                                </View>
-                                <Text numberOfLines={1} style={styles.statusText}>
-                                    Zoom:{' '}
-                                    {zoomDisplay > 0.1
-                                        ? (zoomDisplay * 100).toFixed(0)
-                                        : (zoomDisplay * 100).toFixed(1)}
-                                    %
-                                </Text>
                             </View>
                         </View>
                     </View>
-                </View>
 
-                <View style={[styles.controlsArea, !image && { borderColor: COLOURS.invisible }]}>
-                    {image && (
-                        <>
-                            <View
-                                style={styles.tabBar}
-                                onLayout={(event) =>
-                                    setTabViewportWidth(event.nativeEvent.layout.width)
-                                }
-                            >
-                                <ScrollView
-                                    horizontal
-                                    showsHorizontalScrollIndicator
-                                    onContentSizeChange={(width) => setTabContentWidth(width)}
-                                    onScroll={(event) =>
-                                        setTabScrollOffset(event.nativeEvent.contentOffset.x)
+                    <View
+                        style={[
+                            styles.controlsArea,
+                            isLandscape && styles.landscapeHalf,
+                            !image && { borderColor: COLOURS.invisible },
+                        ]}
+                    >
+                        {image && (
+                            <>
+                                <View
+                                    style={styles.tabBar}
+                                    onLayout={(event) =>
+                                        setTabViewportWidth(event.nativeEvent.layout.width)
                                     }
-                                    scrollEventThrottle={16}
                                 >
-                                    <TabButton
-                                        label="Datasets"
-                                        onPress={() => {
-                                            changeWorkspaceTab('datasets');
-                                            setMode('points');
-                                        }}
-                                        active={workspaceTab === 'datasets'}
-                                    />
-                                    <TabButton
-                                        label="Point"
-                                        onPress={() => {
-                                            changeWorkspaceTab('edit');
-                                            setMode('points');
-                                        }}
-                                        active={workspaceTab === 'edit'}
-                                    />
-                                    <TabButton
-                                        label="Trace"
-                                        onPress={() => {
-                                            changeWorkspaceTab('trace');
-                                            setMode('points');
-                                        }}
-                                        active={workspaceTab === 'trace'}
-                                    />
-                                    <TabButton
-                                        label="Calibrate"
-                                        onPress={() => {
-                                            changeWorkspaceTab('calibrate');
-                                            setMode('calibration');
-                                        }}
-                                        active={workspaceTab === 'calibrate'}
-                                    />
-                                    <TabButton
-                                        label="Analysis"
-                                        onPress={() => {
-                                            changeWorkspaceTab('analysis');
-                                            setMode('points');
-                                        }}
-                                        active={workspaceTab === 'analysis'}
-                                    />
-                                    <TabButton
-                                        label="Project"
-                                        onPress={() => {
-                                            changeWorkspaceTab('project');
-                                            setMode('points');
-                                        }}
-                                        active={workspaceTab === 'project'}
-                                    />
-                                </ScrollView>
-                                {tabScrollOffset > 1 && (
-                                    <View
-                                        pointerEvents="none"
-                                        style={[
-                                            styles.tabOverflowIndicator,
-                                            styles.tabOverflowIndicatorLeft,
-                                        ]}
+                                    <ScrollView
+                                        horizontal
+                                        showsHorizontalScrollIndicator
+                                        onContentSizeChange={(width) => setTabContentWidth(width)}
+                                        onScroll={(event) =>
+                                            setTabScrollOffset(event.nativeEvent.contentOffset.x)
+                                        }
+                                        scrollEventThrottle={16}
                                     >
-                                        <Text style={styles.tabOverflowText}>‹</Text>
-                                    </View>
-                                )}
-                                {tabContentWidth > tabViewportWidth + tabScrollOffset + 1 && (
-                                    <View pointerEvents="none" style={styles.tabOverflowIndicator}>
-                                        <Text style={styles.tabOverflowText}>›</Text>
-                                    </View>
-                                )}
-                            </View>
+                                        <TabButton
+                                            label="Datasets"
+                                            onPress={() => {
+                                                changeWorkspaceTab('datasets');
+                                                setMode('points');
+                                            }}
+                                            active={workspaceTab === 'datasets'}
+                                        />
+                                        <TabButton
+                                            label="Point"
+                                            onPress={() => {
+                                                changeWorkspaceTab('edit');
+                                                setMode('points');
+                                            }}
+                                            active={workspaceTab === 'edit'}
+                                        />
+                                        <TabButton
+                                            label="Trace"
+                                            onPress={() => {
+                                                changeWorkspaceTab('trace');
+                                                setMode('points');
+                                            }}
+                                            active={workspaceTab === 'trace'}
+                                        />
+                                        <TabButton
+                                            label="Calibrate"
+                                            onPress={() => {
+                                                changeWorkspaceTab('calibrate');
+                                                setMode('calibration');
+                                            }}
+                                            active={workspaceTab === 'calibrate'}
+                                        />
+                                        <TabButton
+                                            label="Analysis"
+                                            onPress={() => {
+                                                changeWorkspaceTab('analysis');
+                                                setMode('points');
+                                            }}
+                                            active={workspaceTab === 'analysis'}
+                                        />
+                                        <TabButton
+                                            label="Project"
+                                            onPress={() => {
+                                                changeWorkspaceTab('project');
+                                                setMode('points');
+                                            }}
+                                            active={workspaceTab === 'project'}
+                                        />
+                                    </ScrollView>
+                                    {tabScrollOffset > 1 && (
+                                        <View
+                                            pointerEvents="none"
+                                            style={[
+                                                styles.tabOverflowIndicator,
+                                                styles.tabOverflowIndicatorLeft,
+                                            ]}
+                                        >
+                                            <Text style={styles.tabOverflowText}>‹</Text>
+                                        </View>
+                                    )}
+                                    {tabContentWidth > tabViewportWidth + tabScrollOffset + 1 && (
+                                        <View
+                                            pointerEvents="none"
+                                            style={styles.tabOverflowIndicator}
+                                        >
+                                            <Text style={styles.tabOverflowText}>›</Text>
+                                        </View>
+                                    )}
+                                </View>
 
-                            <View style={styles.workspaceToolContainer}>
-                                {workspaceTab === 'project' && (
-                                    <ProjectTab
-                                        projectName={projectName}
-                                        projectCreatedAt={projectCreatedAt}
-                                        projectUpdatedAt={projectUpdatedAt}
-                                        image={image}
-                                        imageSize={imageSize}
-                                        pickImage={pickImage}
-                                        storageReady={storageReady}
-                                        lastShare={lastShare}
-                                        datasets={datasets}
-                                        activeDataset={activeDataset}
-                                        calibration={calibration}
-                                        calibratedState={calibratedState}
-                                    />
-                                )}
+                                <View style={styles.workspaceToolContainer}>
+                                    {workspaceTab === 'project' && (
+                                        <ProjectTab
+                                            projectName={projectName}
+                                            projectCreatedAt={projectCreatedAt}
+                                            projectUpdatedAt={projectUpdatedAt}
+                                            image={image}
+                                            imageSize={imageSize}
+                                            pickImage={pickImage}
+                                            storageReady={storageReady}
+                                            lastShare={lastShare}
+                                            datasets={datasets}
+                                            activeDataset={activeDataset}
+                                            calibration={calibration}
+                                            calibratedState={calibratedState}
+                                        />
+                                    )}
 
-                                {workspaceTab === 'datasets' && (
-                                    <DatasetsTab
-                                        activeDatasetId={activeDatasetId}
-                                        setActiveDatasetId={setActiveDatasetId}
-                                        activeDataset={activeDataset}
-                                        setDatasets={setDatasets}
-                                        datasets={datasets}
-                                        onDirtyChanged={onDirtyChanged}
-                                        toggleCurveVisibility={toggleCurveVisibility}
-                                        toggleDatasetVisibility={toggleDatasetVisibility}
-                                        toggleDatasetLock={toggleDatasetLock}
-                                        handleDeleteDataset={deleteDataset}
-                                        handleRenameDataset={handleRenameDataset}
-                                        setColourPickerVisible={setColourPickerVisible}
-                                        createDuplicateDataset={createDuplicateDataset}
-                                        createEmptyDataset={createEmptyDataset}
-                                        setSelectedPointRef={setSelectedPointRef}
-                                    />
-                                )}
+                                    {workspaceTab === 'datasets' && (
+                                        <DatasetsTab
+                                            activeDatasetId={activeDatasetId}
+                                            setActiveDatasetId={setActiveDatasetId}
+                                            activeDataset={activeDataset}
+                                            setDatasets={setDatasets}
+                                            datasets={datasets}
+                                            onDirtyChanged={onDirtyChanged}
+                                            toggleCurveVisibility={toggleCurveVisibility}
+                                            toggleDatasetVisibility={toggleDatasetVisibility}
+                                            toggleDatasetLock={toggleDatasetLock}
+                                            handleDeleteDataset={deleteDataset}
+                                            handleRenameDataset={handleRenameDataset}
+                                            setColourPickerVisible={setColourPickerVisible}
+                                            createDuplicateDataset={createDuplicateDataset}
+                                            createEmptyDataset={createEmptyDataset}
+                                            setSelectedPointRef={setSelectedPointRef}
+                                        />
+                                    )}
 
-                                {workspaceTab === 'edit' && (
-                                    <PointTab
-                                        activeDatasetId={activeDatasetId}
-                                        activeDataset={activeDataset}
-                                        setDatasets={setDatasets}
-                                        selectedPointRef={selectedPointRef}
-                                        setSelectedPointRef={setSelectedPointRef}
-                                        selectedPointIndex={selectedPointIndex}
-                                        pointCount={pointCount}
-                                        nudgePoint={nudgePoint}
-                                        nudgeAllPoints={nudgeAllPoints}
-                                        setNudgeAllPoints={setNudgeAllPoints}
-                                        handleDeletePoint={handleDeletePoint}
-                                        zoomDisplay={zoomDisplay}
-                                        imageAspectRatio={
-                                            imageSize && imageSize.height > 0
-                                                ? imageSize.width / imageSize.height
-                                                : 1
-                                        }
-                                    />
-                                )}
+                                    {workspaceTab === 'edit' && (
+                                        <PointTab
+                                            activeDatasetId={activeDatasetId}
+                                            activeDataset={activeDataset}
+                                            setDatasets={setDatasets}
+                                            selectedPointRef={selectedPointRef}
+                                            setSelectedPointRef={setSelectedPointRef}
+                                            selectedPointIndex={selectedPointIndex}
+                                            pointCount={pointCount}
+                                            nudgePoint={nudgePoint}
+                                            nudgeAllPoints={nudgeAllPoints}
+                                            setNudgeAllPoints={setNudgeAllPoints}
+                                            handleDeletePoint={handleDeletePoint}
+                                            zoomDisplay={zoomDisplay}
+                                            imageAspectRatio={
+                                                imageSize && imageSize.height > 0
+                                                    ? imageSize.width / imageSize.height
+                                                    : 1
+                                            }
+                                        />
+                                    )}
 
-                                {workspaceTab === 'trace' && (
-                                    <TraceTab
-                                        tracePhase={tracePhase}
-                                        onStartTrace={startCurveTrace}
-                                        directionMode={traceDirectionMode}
-                                        onDirectionModeChange={setTraceDirectionMode}
-                                        onCancelTrace={resetTrace}
-                                        onAcceptTrace={acceptCurveTrace}
-                                        activeDataset={activeDataset}
-                                        tracePointCount={tracePreview.length}
-                                        hasTraceStart={traceStart !== null}
-                                    />
-                                )}
+                                    {workspaceTab === 'trace' && (
+                                        <TraceTab
+                                            tracePhase={tracePhase}
+                                            onStartTrace={startCurveTrace}
+                                            directionMode={traceDirectionMode}
+                                            onDirectionModeChange={setTraceDirectionMode}
+                                            onCancelTrace={resetTrace}
+                                            onAcceptTrace={acceptCurveTrace}
+                                            activeDataset={activeDataset}
+                                            tracePointCount={tracePreview.length}
+                                            hasTraceStart={traceStart !== null}
+                                        />
+                                    )}
 
-                                {workspaceTab === 'analysis' && (
-                                    <AnalysisTab
-                                        datasets={datasets}
-                                        activeDataset={activeDataset}
-                                        stats={stats}
-                                        linearFit={linearFit}
-                                        linearR2={linearR2}
-                                        calibration={calibration}
-                                        calibratedState={calibratedState}
-                                        showRegressionLine={showRegressionLine}
-                                        setShowRegressionLine={setShowRegressionLine}
-                                        onDirtyChanged={onDirtyChanged}
-                                    />
-                                )}
+                                    {workspaceTab === 'analysis' && (
+                                        <AnalysisTab
+                                            datasets={datasets}
+                                            activeDataset={activeDataset}
+                                            stats={stats}
+                                            linearFit={linearFit}
+                                            linearR2={linearR2}
+                                            calibration={calibration}
+                                            calibratedState={calibratedState}
+                                            showRegressionLine={showRegressionLine}
+                                            setShowRegressionLine={setShowRegressionLine}
+                                            onDirtyChanged={onDirtyChanged}
+                                        />
+                                    )}
 
-                                {workspaceTab === 'calibrate' && (
-                                    <CalibrationTab
-                                        updateCalibrationValue={updateCalibrationValue}
-                                        calibration={calibration}
-                                        setCalibration={setCalibration}
-                                        calibrationSelection={calibrationSelection}
-                                        setCalibrationSelection={setCalibrationSelection}
-                                        calibratedState={calibratedState}
-                                        setCalibratedState={setCalibratedState}
-                                        onDirtyChanged={onDirtyChanged}
-                                        nudgeCalibrationPoint={nudgeCalibrationPoint}
-                                        zoomDisplay={zoomDisplay}
-                                        imageAspectRatio={
-                                            imageSize && imageSize.height > 0
-                                                ? imageSize.width / imageSize.height
-                                                : 1
-                                        }
-                                    />
-                                )}
-                            </View>
-                        </>
-                    )}
+                                    {workspaceTab === 'calibrate' && (
+                                        <CalibrationTab
+                                            updateCalibrationValue={updateCalibrationValue}
+                                            calibration={calibration}
+                                            setCalibration={setCalibration}
+                                            calibrationSelection={calibrationSelection}
+                                            setCalibrationSelection={setCalibrationSelection}
+                                            calibratedState={calibratedState}
+                                            setCalibratedState={setCalibratedState}
+                                            onDirtyChanged={onDirtyChanged}
+                                            nudgeCalibrationPoint={nudgeCalibrationPoint}
+                                            zoomDisplay={zoomDisplay}
+                                            imageAspectRatio={
+                                                imageSize && imageSize.height > 0
+                                                    ? imageSize.width / imageSize.height
+                                                    : 1
+                                            }
+                                        />
+                                    )}
+                                </View>
+                            </>
+                        )}
+                    </View>
                 </View>
 
                 <ColourPickerModal
@@ -1288,6 +1331,7 @@ export default function MainScreen({
                     <Dialog
                         visible={true}
                         title="Share Project"
+                        onDismiss={() => setDialogPayload({ type: null })}
                         buttons={[
                             {
                                 text: 'Cancel',
@@ -1340,6 +1384,7 @@ export default function MainScreen({
                     <Dialog
                         visible={true}
                         title="Project shared"
+                        onDismiss={() => setDialogPayload({ type: null })}
                         buttons={[
                             {
                                 text: 'Close',
@@ -1412,6 +1457,7 @@ export default function MainScreen({
                     <Dialog
                         visible={true}
                         title="Download complete"
+                        onDismiss={() => setDialogPayload({ type: null })}
                         buttons={[
                             {
                                 text: 'Close',
@@ -1432,6 +1478,7 @@ export default function MainScreen({
                     <Dialog
                         visible={true}
                         title={dialogPayload.title ?? 'Error'}
+                        onDismiss={() => setDialogPayload({ type: null })}
                         buttons={[
                             {
                                 text: 'Close',
@@ -1534,6 +1581,23 @@ const styles = StyleSheet.create({
         backgroundColor: COLOURS.surface,
     },
 
+    titleBarLandscape: {
+        paddingHorizontal: SPACING.sm,
+    },
+
+    projectTitle: {
+        flex: 1,
+        minWidth: 0,
+        alignItems: 'flex-start',
+    },
+
+    landscapeToolbarActions: {
+        flexDirection: 'row',
+        alignItems: 'center',
+        flexShrink: 0,
+        gap: 2,
+    },
+
     titleBarActions: {
         flexDirection: 'row',
         justifyContent: 'space-between',
@@ -1556,13 +1620,31 @@ const styles = StyleSheet.create({
 
     controlsArea: {
         flex: 4,
+        minWidth: 0,
+        minHeight: 0,
         backgroundColor: COLOURS.surfaceToolsContainer,
         borderColor: COLOURS.toolsContainerBorder,
         borderWidth: 3,
     },
 
+    mainWorkspace: {
+        flex: 1,
+        flexDirection: 'column',
+        minHeight: 0,
+    },
+
+    mainWorkspaceLandscape: {
+        flexDirection: 'row',
+    },
+
+    landscapeHalf: {
+        flex: 1,
+    },
+
     canvasArea: {
         flex: 6,
+        minWidth: 0,
+        minHeight: 0,
         justifyContent: 'center',
     },
 
